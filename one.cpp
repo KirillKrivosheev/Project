@@ -6,9 +6,21 @@
 #include "mission.h"
 #include <cmath>
 #include <list>
+#include <vector>
 
 using namespace sf;
 using namespace std;
+
+struct Vector
+{
+	float x;
+	float y;
+}typedef Vector;
+
+float Scalar_product(Vector a, Vector b)
+{
+	return (a.x)*b.x + (a.y)*b.y;
+}
 
 struct Figure
 {
@@ -21,9 +33,16 @@ public:
 	float dy;
 	float dfi;
 	float speed;
+
+	/////////////////////////new//////////////////////////////////////
+	Vector velocity;
+	Vector acceleration;
+	///////////////////////////////////////////////////////////////////////
+
 	int w;
 	int h;
 }typedef Figure;
+
 ////////////////////////////////////Общий класс родитель//////////////////////////
 class Entity {
 public:
@@ -36,7 +55,17 @@ public:
 	String name;//враги могут быть разные, мы не будем делать другой класс для различающегося врага.всего лишь различим врагов по имени и дадим каждому свое действие в update в зависимости от имени
 	Entity(Image &image, float X, float Y, int W, int H, String Name) {
 		fig.x = X; fig.y = Y; fig.w = W; fig.h = H; name = Name; moveTimer = 0;
-		fig.speed = 0; health = 100; fig.dx = 0; fig.dy = 0; fig.fi = 0; fig.dfi = 0;
+		fig.speed = 0; health = 100; fig.dx = 0; fig.dy = 0; fig.fi = 0; fig.dfi = 0; 
+		
+		
+		/////////////////new//////////////////////////////////////
+		fig.velocity.x = 0;
+		fig.velocity.y = 0;
+		fig.acceleration.x = 0;
+		fig.acceleration.y = 0;
+		//////////////////////////////////////////////////////////////////
+
+
 		life = true; onGround = false; isMove = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -44,15 +73,12 @@ public:
 	}
 };
 
-class Scene
-{
-public:
-}typedef Scene;
+
 ////////////////////////////////////////////////////КЛАСС ИГРОКА////////////////////////
 class Player :public Entity {
 public:
-	enum { left, right, up, down, jump, stay } state;//добавляем тип перечисления - состояние объекта
-	int playerScore;//эта переменная может быть только у игрока
+	enum { left, right, up, down, jump, stay } state;
+	int playerScore;
 
 	Player(Image &image, float X, float Y, int W, int H, String Name) :Entity(image, X, Y, W, H, Name) {
 		playerScore = 0; state = stay;
@@ -64,75 +90,221 @@ public:
 	void control() {
 		if (Keyboard::isKeyPressed) {//если нажата клавиша
 			if (Keyboard::isKeyPressed(Keyboard::Left)) {//а именно левая
-				state = left; fig.dfi = -0.01;
+				state = left; fig.dfi = -0.005;
 			}
 			if (Keyboard::isKeyPressed(Keyboard::Right)) {
-				state = right; fig.dfi = 0.01;
+				state = right; fig.dfi = 0.005;
 			}
 
-			if ((Keyboard::isKeyPressed(Keyboard::Up))) {//если нажата клавиша вверх и мы на земле, то можем прыгать
-				fig.speed = 0.1; //увеличил высоту прыжка
+			if ((Keyboard::isKeyPressed(Keyboard::Up))) {
+				fig.speed = 0.3; 
 			}
 
-			if (Keyboard::isKeyPressed(Keyboard::Down)) {
-				fig.speed = -0.1;
-			}
+			//if (Keyboard::isKeyPressed(Keyboard::Down)) {
+				//fig.speed = -0.1;
+			//}
 		}
 	}
 
 	void checkCollisionWithMap(float Dx, float Dy)//ф ция проверки столкновений с картой
 	{
 		for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)//проходимся по элементам карты
-			for (int j = fig.x / 32; j<(fig.x + fig.w) / 32; j++)
+			for (int j = fig.x / 32; j < (fig.x + fig.w) / 32; j++)
 			{
 				if (TileMap[i][j] == '0')//если элемент наш тайлик земли? то
 				{
-					if (Dy>0) { fig.y = i * 32 - fig.h;  fig.dy = 0; onGround = true; }//по Y вниз=>идем в пол(стоим на месте) или падаем. В этот момент надо вытолкнуть персонажа и поставить его на землю, при этом говорим что мы на земле тем самым снова можем прыгать
-					if (Dy<0) { fig.y = i * 32 + 32;  fig.dy = 0; }//столкновение с верхними краями карты(может и не пригодиться)
-					if (Dx>0) { fig.x = j * 32 - fig.w; }//с правым краем карты
-					if (Dx<0) { fig.x = j * 32 + 32; }// с левым краем карты
+					if (Dy > 0) { fig.y = i * 32 - fig.h;  fig.dy = 0; }//по Y вниз=>идем в пол(стоим на месте) или падаем. В этот момент надо вытолкнуть персонажа и поставить его на землю, при этом говорим что мы на земле тем самым снова можем прыгать
+					if (Dy < 0) { fig.y = i * 32 + 32;  fig.dy = 0; }//столкновение с верхними краями карты(может и не пригодиться)
+					if (Dx > 0) { fig.x = j * 32 - fig.w; }//с правым краем карты
+					if (Dx < 0) { fig.x = j * 32 + 32; }// с левым краем карты
 				}
-				//else { onGround = false; }//надо убрать т.к мы можем находиться и на другой поверхности или платформе которую разрушит враг
 			}
 	}
 
-	void update(float time)
+	CircleShape checkCollisionWithEnemy(Figure Enemy)
 	{
-		control();//функция управления персонажем
-				  /*switch (state)//тут делаются различные действия в зависимости от состояния
-				  {
-				  case right:dx = speed; break;//состояние идти вправо
-				  case left:dx = -speed; break;//состояние идти влево
-				  case up: break;//будет состояние поднятия наверх (например по лестнице)
-				  case down: dx = 0; break;//будет состояние во время спуска персонажа (например по лестнице)
-				  case stay: break;//и здесь тоже
-				  }*/
-		fig.dx = sin(fig.fi) * fig.speed;
-		fig.dy = -cos(fig.fi) * fig.speed;
+		CircleShape shape2(5, 100);
+		shape2.setFillColor(sf::Color::Green);
+		Vector e1;
+		e1.x = sin(fig.fi);
+		e1.y = -cos(fig.fi);
+		Vector e2;
+		e2.x = -cos(fig.fi);
+		e2.y = -sin(fig.fi);
+		Vector r;
+		r.x = Enemy.x + 0.5*Enemy.w - fig.x - 0.5*fig.w;
+		r.y = Enemy.y + 0.5*Enemy.h - fig.y - 0.5*fig.h;
+
+		///////////////////////////////////////////////////
+		if (sqrt((r.x)*(r.x) + (r.y)*(r.y)) > sqrt((0.5*fig.h)*(0.5*fig.h) + (0.5*fig.w)*(0.5*fig.w)) + 0.5*Enemy.h)
+		{
+			shape2.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
+			shape2.setRadius(0);
+			return shape2;
+		}
+        ////////////////////////////////////////////////////////////////
+		Vector closest;
+		closest.x = 0;
+		closest.y = 0;
+		Vector projection;
+		Vector normal;
+		float penetration;
+		if (Scalar_product(e1, r) >= 0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w || Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) >= 0.5*fig.w)
+		{
+			closest.x = fig.x + 0.5*(fig.h)*e1.x + 0.5*(fig.w)*e2.x + 0.5*fig.w;
+			closest.y = fig.y + 0.5*(fig.h)*e1.y + 0.5*(fig.w)*e2.y + 0.5*fig.h;
+		}
+
+		if ((Scalar_product(e1, r) >= 0.5*fig.h && Scalar_product(e2, r) < -0.5*fig.w) || (Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) <= -0.5*fig.w))
+		{
+			closest.x = fig.x + 0.5*(fig.h)*e1.x - 0.5*(fig.w)*e2.x + 0.5*fig.w;
+			closest.y = fig.y + 0.5*(fig.h)*e1.y - 0.5*(fig.w)*e2.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) <= -0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w || Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) >= 0.5*fig.w)
+		{
+			closest.x = fig.x - 0.5*(fig.h)*e1.x + 0.5*(fig.w)*e2.x + 0.5*fig.w;
+			closest.y = fig.y - 0.5*(fig.h)*e1.y + 0.5*(fig.w)*e2.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) <= -0.5*fig.h && Scalar_product(e2, r) < -0.5*fig.w || Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) <= -0.5*fig.w)
+		{
+			closest.x = fig.x - 0.5*(fig.h)*e1.x - 0.5*(fig.w)*e2.x + 0.5*fig.w;
+			closest.y = fig.y - 0.5*(fig.h)*e1.y - 0.5*(fig.w)*e2.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) < 0.5*fig.w && Scalar_product(e2, r) > -0.5*fig.w)
+		{
+			projection.x = (e2.x)*Scalar_product(e2, r);
+			projection.y = (e2.y)*Scalar_product(e2, r);
+			closest.x = fig.x + 0.5*(fig.h)*e1.x + projection.x + 0.5*fig.w;
+			closest.y = fig.y + 0.5*(fig.h)*e1.y + projection.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) < 0.5*fig.w && Scalar_product(e2, r) > -0.5*fig.w)
+		{
+			projection.x = (e2.x)*Scalar_product(e2, r);
+			projection.y = (e2.y)*Scalar_product(e2, r);
+			closest.x = fig.x - 0.5*(fig.h)*e1.x + projection.x + 0.5*fig.w;
+			closest.y = fig.y - 0.5*(fig.h)*e1.y + projection.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) < 0.5*fig.h && Scalar_product(e1, r) > -0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w)
+		{
+			projection.x = (e1.x)*Scalar_product(e1, r);
+			projection.y = (e1.y)*Scalar_product(e1, r);
+			closest.x = fig.x + 0.5*(fig.w)*e2.x + projection.x + 0.5*fig.w;
+			closest.y = fig.y + 0.5*(fig.w)*e2.y + projection.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) < 0.5*fig.h && Scalar_product(e1, r) > -0.5*fig.h && Scalar_product(e2, r) < - 0.5*fig.w)
+		{
+			projection.x = (e1.x)*Scalar_product(e1, r);
+			projection.y = (e1.y)*Scalar_product(e1, r);
+			closest.x = fig.x - 0.5*(fig.w)*e2.x + projection.x + 0.5*fig.w;
+			closest.y = fig.y - 0.5*(fig.w)*e2.y + projection.y + 0.5*fig.h;
+		}
+
+		if (Scalar_product(e1, r) <= 0.5*fig.h && Scalar_product(e1, r) >= -0.5*fig.h && Scalar_product(e2, r) <= 0.5*fig.w && Scalar_product(e2, r) >= -0.5*fig.w)
+		{
+			closest.x = Enemy.x + 0.5*Enemy.w;
+			closest.y = Enemy.y + 0.5*Enemy.h;
+		}
+
+		shape2.setPosition(closest.x, closest.y);
+
+		if ((0.5*Enemy.h)*(0.5*Enemy.h) < (Enemy.x + 0.5*Enemy.w - closest.x)*(Enemy.x + 0.5*Enemy.w - closest.x) + (Enemy.y + 0.5*Enemy.h - closest.y)*(Enemy.y + 0.5*Enemy.h - closest.y))
+		{
+			return shape2;
+		}
+
+		normal.x = Enemy.x + 0.5*Enemy.w - closest.x;
+		normal.y = Enemy.y + 0.5*Enemy.h - closest.y;//к центру круга
+		penetration = (0.5*Enemy.h) - sqrt((Enemy.x + 0.5*Enemy.w - closest.x)*(Enemy.x + 0.5*Enemy.w - closest.x) + (Enemy.y + 0.5*Enemy.h - closest.y)*(Enemy.y + 0.5*Enemy.h - closest.y));
+
+		if (Scalar_product(e1, r) <= 0.5*fig.h && Scalar_product(e1, r) >= -0.5*fig.h && Scalar_product(e2, r) <= 0.5*fig.w && Scalar_product(e2, r) >= -0.5*fig.w)
+		{
+			normal.x = r.x;
+			normal.y = r.y;
+		}
+		//cout << penetration << endl;
+
+		float normal_length;
+		normal_length = (normal.x)*(normal.x) + (normal.y)*(normal.y);
+		if (normal_length != 0)
+		{
+			normal.x = (normal.x) / sqrt(normal_length);
+			normal.y = (normal.y) / sqrt(normal_length);
+		}
+	
+		Vector relative_speed;
+		relative_speed.x = (Enemy.speed)*sin(Enemy.fi) - (fig.speed)*sin(fig.fi);
+		relative_speed.y = -(Enemy.speed)*cos(Enemy.fi) + (fig.speed)*cos(fig.fi);
+	    if (Scalar_product(relative_speed, normal) > 0)
+		{
+			cout << "I am here";
+			return shape2;
+		}
+		float power = sqrt(penetration)*penetration*0.01*Scalar_product(relative_speed, normal);
+		fig.acceleration.x = power*normal.x;
+		fig.acceleration.y = power*normal.y;
+		
+		return shape2;
+	}
+
+	CircleShape update(float time, Figure enemy)
+	{
+		CircleShape shape3;
+		control();
+				  
+		//////////////////////////old//////////////////////////////////////////
+		//fig.dx = sin(fig.fi) * fig.speed;//fig speed_x // fig.speed_y
+		//fig.dy = -cos(fig.fi) * fig.speed;
+		//////////////////////////////////////////////////////////////////////
+
+		//////////////////////////new///////////////////////////////////////
+		fig.velocity.x = sin(fig.fi) * fig.speed;
+		fig.velocity.y = -cos(fig.fi) * fig.speed;
+		shape3 = checkCollisionWithEnemy(enemy);
+		fig.velocity.x += fig.acceleration.x * time;
+		fig.velocity.y += fig.acceleration.y * time;
+		fig.acceleration.x = 0;
+		fig.acceleration.y = 0;
+		if (fig.velocity.y < 0)
+		{
+			fig.fi = atan(-fig.velocity.x / (fig.velocity.y));
+		}
+		if (fig.velocity.y > 0)
+		{
+			fig.fi = acos(-1) + atan(-fig.velocity.x / (fig.velocity.y));
+		}
+		fig.dx = (fig.velocity.x);
+		fig.dy = (fig.velocity.y);
 		fig.fi += fig.dfi * time;
-		//dfi = 0;
 		sprite.setRotation(fig.fi * 180 / 3.1415);//поворачиваем спрайт на эти градусы
 		fig.dfi = 0;
 		fig.x += fig.dx*time;
 		checkCollisionWithMap(fig.dx, 0);//обрабатываем столкновение по Х
 		fig.y += fig.dy*time;
 		checkCollisionWithMap(0, fig.dy);//обрабатываем столкновение по Y
-		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); //задаем позицию спрайта в место его центра
+		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h); //задаем позицию спрайта в место его центра
 		if (health <= 0) { life = false; }
-		if (!isMove) { fig.speed = 0; }
-		//if (!onGround) { dy = dy + 0.0015*time; }//убираем и будем всегда притягивать к земле
+		if (!isMove) { fig.speed = 0.98*fig.speed; }
 		if (life) { setPlayerCoordinateForView(fig.x, fig.y); }
-		//dy = dy + 0.0015*time;//постоянно притягиваемся к земле
+		return shape3;
 	}
 };
-
 
 class Enemy :public Entity {
 public:
 	Enemy(Image &image, float X, float Y, int W, int H, String Name) :Entity(image, X, Y, W, H, Name) {
 		if (name == "EasyEnemy") {
 			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
-			fig.dx = 0.1;//даем скорость.этот объект всегда двигается
+			fig.dx = 0.2;//даем скорость.этот объект всегда двигается
+			fig.velocity.x = 0.2;
+			fig.fi = acos(0);
+			fig.velocity.y = 0;
+			fig.speed = 0.2;
 		}
 	}
 
@@ -145,8 +317,8 @@ public:
 				{
 					if (Dy>0) { fig.y = i * 32 - fig.h; }//по Y вниз=>идем в пол(стоим на месте) или падаем. В этот момент надо вытолкнуть персонажа и поставить его на землю, при этом говорим что мы на земле тем самым снова можем прыгать
 					if (Dy<0) { fig.y = i * 32 + 32; }//столкновение с верхними краями карты(может и не пригодиться)
-					if (Dx>0) { fig.x = j * 32 - fig.w; fig.dx = -0.1; sprite.scale(-1, 1); }//с правым краем карты
-					if (Dx<0) { fig.x = j * 32 + 32; fig.dx = 0.1; sprite.scale(-1, 1); }// с левым краем карты
+					if (Dx > 0) { fig.x = j * 32 - fig.w; fig.dx = -0.2; fig.velocity.x = -0.2; fig.fi = -acos(0); sprite.scale(-1, 1); }//с правым краем карты
+					if (Dx < 0) { fig.x = j * 32 + 32; fig.dx = 0.2; fig.velocity.x = 0.2; fig.fi = acos(0); sprite.scale(-1, 1); }// с левым краем карты
 				}
 			}
 	}
@@ -155,7 +327,6 @@ public:
 	{
 		if (name == "EasyEnemy") {//для персонажа с таким именем логика будет такой
 
-								  //moveTimer += time;if (moveTimer>3000){ dx *= -1; moveTimer = 0; }//меняет направление примерно каждые 3 сек
 			checkCollisionWithMap(fig.dx, 0);//обрабатываем столкновение по Х
 			fig.x += fig.dx*time;
 			sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); //задаем позицию спрайта в место его центра
@@ -164,14 +335,15 @@ public:
 	}
 };
 
+
 int main()
 {
-	RenderWindow window(VideoMode(640, 480), "Lesson 21. kychka-pc.ru");
+	RenderWindow window(VideoMode(640, 480), "Space");
 	view.reset(FloatRect(0, 0, 640, 480));
 
 
 	Image map_image;
-	map_image.loadFromFile("images/map.png");
+	map_image.loadFromFile("images/background.jpg");
 	Texture map;
 	map.loadFromImage(map_image);
 	Sprite s_map;
@@ -182,12 +354,18 @@ int main()
 
 	Image easyEnemyImage;
 	easyEnemyImage.loadFromFile("images/Bill.jpg");
-	easyEnemyImage.createMaskFromColor(Color(255, 0, 0));//сделали маску по цвету.но лучше изначально иметь прозрачную картинку
+	easyEnemyImage.createMaskFromColor(Color(100, 100, 255));//сделали маску по цвету.но лучше изначально иметь прозрачную картинку
 
+	CircleShape shape(5, 100);
+	shape.setFillColor(sf::Color::Red);
+	CircleShape shape1(5, 100);
+	shape1.setFillColor(sf::Color::Blue);
+	CircleShape shape4;
 
 	Player p(heroImage, 750, 300, 100, 200, "Player1");//объект класса игрока
-	Enemy easyEnemy(easyEnemyImage, 850, 471, 150, 150, "EasyEnemy");//простой враг, объект класса врага
-
+	Enemy easyEnemy(easyEnemyImage, 850, 391, 150, 150, "EasyEnemy");//простой враг, объект класса врага
+	
+	
 	Clock clock;
 	while (window.isOpen())
 	{
@@ -203,8 +381,10 @@ int main()
 			if (event.type == sf::Event::Closed)
 				window.close();
 		}
-		p.update(time);// Player update function	
+		shape4 = p.update(time, easyEnemy.fig);// Player update function	
 		easyEnemy.update(time);//easyEnemy update function
+		shape.setPosition(p.fig.x + 0.5*p.fig.w, p.fig.y + 0.5*p.fig.h);
+		shape1.setPosition(easyEnemy.fig.x + 0.5*easyEnemy.fig.w, easyEnemy.fig.y + 0.5*easyEnemy.fig.h);
 		window.setView(view);
 		window.clear();
 
@@ -223,6 +403,9 @@ int main()
 			}
 		window.draw(easyEnemy.sprite);
 		window.draw(p.sprite);
+		window.draw(shape);
+		window.draw(shape1);
+		window.draw(shape4);
 		window.display();
 	}
 	return 0;
