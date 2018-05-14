@@ -1,11 +1,11 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include <iostream>
-const int HEIGHT_MAP = 25;
-const int WIDTH_MAP = 40;
+const int HEIGHT_MAP = 10;// 25;
+const int WIDTH_MAP = 10;//40;
 
 
-sf::String TileMap[HEIGHT_MAP] = {
+/*sf::String TileMap[HEIGHT_MAP] = {
 	"0000000000000000000000000000000000000000",
 	"0                                      0",
 	"0                                      0",
@@ -13,7 +13,6 @@ sf::String TileMap[HEIGHT_MAP] = {
 	"0                                      0",
 	"0                                      0",
 	"0                                      0",
-	"0   s                                  0",
 	"0                                      0",
 	"0                                      0",
 	"0                                      0",
@@ -27,13 +26,14 @@ sf::String TileMap[HEIGHT_MAP] = {
 	"0                                      0",
 	"0                                      0",
 	"0                                      0",
-	"0                                      0",
-	"0                                      0",
-	"0                                      0",
+	"0              s    0000               0",
+	"0           000000000000               0",
+	"0           000000000000               0",
+	"0   f    h  000000000000               0",
 	"0000000000000000000000000000000000000000",
 };
-
-void randomMapGenerate() {//рандомно расставляем камни
+*/
+/*void randomMapGenerate() {//рандомно расставляем камни
 
 
 	int randomElementX = 0;//случайный элемент по горизонтали
@@ -50,4 +50,4 @@ void randomMapGenerate() {//рандомно расставляем камни
 			countStone--;//создали камень=>счетчик камней будет "текущий минус 1"
 		}
 	}
-}
+}*/
