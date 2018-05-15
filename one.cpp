@@ -30,11 +30,11 @@ public:
 	int w;
 	int h;
 }typedef Figure;
-////////////////////////////////////Общий класс родитель//////////////////////////
+
 class Entity {
 public:
 	Figure fig;
-	float moveTimer;//добавили переменную таймер для будущих целей
+	float moveTimer;
 	int health;
 	bool life, isMove, onGround;
 	Texture texture;
@@ -59,8 +59,8 @@ public:
 
 class Player :public Entity {
 public:
-	enum { left, right, up, down, jump, stay } state;//добавляем тип перечисления - состояние объекта
-	int playerScore;//эта переменная может быть только у игрока
+	enum { left, right, up, down, jump, stay } state;
+	int playerScore;
 
 	Player(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
 		playerScore = 0; state = stay;
@@ -72,16 +72,16 @@ public:
 	//operator = 
 
 	void control() {
-		if (Keyboard::isKeyPressed) {//если нажата клавиша
-			if (Keyboard::isKeyPressed(Keyboard::Left)) {//а именно левая
-				state = left; fig.dfi = -0.01;
+		if (Keyboard::isKeyPressed) {
+			if (Keyboard::isKeyPressed(Keyboard::Left)) {
+				state = left; fig.dfi = -0.005;
 			}
 			if (Keyboard::isKeyPressed(Keyboard::Right)) {
-				state = right; fig.dfi = 0.01;
+				state = right; fig.dfi = 0.005;
 			}
 
-			if ((Keyboard::isKeyPressed(Keyboard::Up))) {//если нажата клавиша вверх и мы на земле, то можем прыгать
-				fig.speed = 0.5; //увеличил высоту прыжка
+			if ((Keyboard::isKeyPressed(Keyboard::Up))) {
+				fig.speed = 0.5; 
 			}
 
 			if (Keyboard::isKeyPressed(Keyboard::Down)) {
@@ -90,48 +90,46 @@ public:
 		}
 	}
 
-	/*void checkCollisionWithMap(float Dx, float Dy)//ф ция проверки столкновений с картой
+	/*void checkCollisionWithMap(float Dx, float Dy)
 	{
-		for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)//проходимся по элементам карты
+		for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)
 			for (int j = fig.x / 32; j<(fig.x + fig.w) / 32; j++)
 			{
-				if (TileMap[i][j] == '0')//если элемент наш тайлик земли? то
+				if (TileMap[i][j] == '0')
 				{
-					if (Dy>0) { fig.y = i * 32 - fig.h;  fig.dy = 0; onGround = true; }//по Y вниз=>идем в пол(стоим на месте) или падаем. В этот момент надо вытолкнуть персонажа и поставить его на землю, при этом говорим что мы на земле тем самым снова можем прыгать
-					if (Dy<0) { fig.y = i * 32 + 32;  fig.dy = 0; }//столкновение с верхними краями карты(может и не пригодиться)
-					if (Dx>0) { fig.x = j * 32 - fig.w; }//с правым краем карты
-					if (Dx<0) { fig.x = j * 32 + 32; }// с левым краем карты
+					if (Dy>0) { fig.y = i * 32 - fig.h;  fig.dy = 0; onGround = true; }
+					if (Dy<0) { fig.y = i * 32 + 32;  fig.dy = 0; }
+					if (Dx>0) { fig.x = j * 32 - fig.w; }
+					if (Dx<0) { fig.x = j * 32 + 32; }
 				}
-				//else { onGround = false; }//надо убрать т.к мы можем находиться и на другой поверхности или платформе которую разрушит враг
+				//else { onGround = false; }
 			}
 	}
 	*/
 	void update(float time)
 	{
-		control();//функция управления персонажем
-				  /*switch (state)//тут делаются различные действия в зависимости от состояния
+		control();
+				  /*switch (state)
 				  {
-				  case right:dx = speed; break;//состояние идти вправо
-				  case left:dx = -speed; break;//состояние идти влево
-				  case up: break;//будет состояние поднятия наверх (например по лестнице)
-				  case down: dx = 0; break;//будет состояние во время спуска персонажа (например по лестнице)
-				  case stay: break;//и здесь тоже
+				  case right:dx = speed; break;
+				  case left:dx = -speed; break;
+				  case up: break;
+				  case down: dx = 0; break;
+				  case stay: break;
 				  }*/
 		fig.dx = sin(fig.fi) * fig.speed;
 		fig.dy = -cos(fig.fi) * fig.speed;
 		fig.fi += fig.dfi * time;
 		//dfi = 0;
-		sprite.setRotation(fig.fi * 180 / 3.1415);//поворачиваем спрайт на эти градусы
+		sprite.setRotation(fig.fi * 180 / 3.1415);
 		fig.dfi = 0;
 		fig.x += fig.dx*time;
-		//checkCollisionWithMap(fig.dx, 0);//обрабатываем столкновение по Х
+		//checkCollisionWithMap(fig.dx, 0);
 		fig.y += fig.dy*time;
-		//checkCollisionWithMap(0, fig.dy);//обрабатываем столкновение по Y
-		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); //задаем позицию спрайта в место его центра
+		//checkCollisionWithMap(0, fig.dy);
+		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); 
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0; }
-		//if (!onGround) { dy = dy + 0.0015*time; }//убираем и будем всегда притягивать к земле
-		//dy = dy + 0.0015*time;//постоянно притягиваемся к земле
 	}
 };
 class Asteroid :public Entity {
@@ -139,7 +137,7 @@ public:
 	bool spawned;
 	Asteroid(Image &image, float X, float Y, int D, float gr_rotation,  int Name) :Entity(image, X, Y, D, D, Name) {
 		spawned = false;
-		sprite.setTextureRect(IntRect(0, 0, 150, 150)); //<- нужно заменить константы на переменные
+		sprite.setTextureRect(IntRect(0, 0, 150, 150)); 
 		sprite.setScale((float)fig.w / 150 , (float)fig.h / 150);
 		sprite.setOrigin(150 / 2, 150 / 2);
 		fig.fi = gr_rotation / 180 * 3.1415;
@@ -187,33 +185,32 @@ public:
 	Enemy(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
 		if (name == 2) {
 			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
-			fig.dx = 0.1;//даем скорость.этот объект всегда двигается
+			fig.dx = 0.1;
 		}
 	}
 
-	/*void checkCollisionWithMap(float Dx, float Dy)//ф ция проверки столкновений с картой
+	/*void checkCollisionWithMap(float Dx, float Dy)
 	{
-		for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)//проходимся по элементам карты
+		for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)
 			for (int j = fig.x / 32; j<(fig.x + fig.w) / 32; j++)
 			{
-				if (TileMap[i][j] == '0')//если элемент наш тайлик земли, то
+				if (TileMap[i][j] == '0')
 				{
-					if (Dy>0) { fig.y = i * 32 - fig.h; }//по Y вниз=>идем в пол(стоим на месте) или падаем. В этот момент надо вытолкнуть персонажа и поставить его на землю, при этом говорим что мы на земле тем самым снова можем прыгать
-					if (Dy<0) { fig.y = i * 32 + 32; }//столкновение с верхними краями карты(может и не пригодиться)
-					if (Dx>0) { fig.x = j * 32 - fig.w; fig.dx = -0.1; sprite.scale(-1, 1); }//с правым краем карты
-					if (Dx<0) { fig.x = j * 32 + 32; fig.dx = 0.1; sprite.scale(-1, 1); }// с левым краем карты
+					if (Dy>0) { fig.y = i * 32 - fig.h; }
+					if (Dy<0) { fig.y = i * 32 + 32; }
+					if (Dx>0) { fig.x = j * 32 - fig.w; fig.dx = -0.1; sprite.scale(-1, 1); }
+					if (Dx<0) { fig.x = j * 32 + 32; fig.dx = 0.1; sprite.scale(-1, 1); }
 				}
 			}
 	}*/
 
 	void update(float time)
 	{
-		if (name == 2) {//для персонажа с таким именем логика будет такой
+		if (name == 2) {
 
-								  //moveTimer += time;if (moveTimer>3000){ dx *= -1; moveTimer = 0; }//меняет направление примерно каждые 3 сек
-			//checkCollisionWithMap(fig.dx, 0);//обрабатываем столкновение по Х
+			//checkCollisionWithMap(fig.dx, 0);
 			fig.x += fig.dx*time;
-			sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); //задаем позицию спрайта в место его центра
+			sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2); 
 			if (health <= 0) { life = false; }
 		}
 	}
