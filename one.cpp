@@ -22,6 +22,11 @@ public:
 	float dy;
 	float dfi;
 	float speed;
+
+	float speedx;
+	float speedy;
+	float speedfi;
+
 	int w;
 	int h;
 }typedef Figure;
@@ -40,6 +45,9 @@ public:
 	Entity(Image &image, float X, float Y, int W, int H, int Name) {
 		fig.x = X; fig.y = Y; fig.w = W; fig.h = H; name = Name; moveTimer = 0;
 		fig.speed = 0; health = 100; fig.dx = 0; fig.dy = 0; fig.fi = 0; fig.dfi = 0;
+
+		fig.speedx = 0; fig.speedy = 0; fig.speedfi = 0;
+
 		life = true; onGround = false; isMove = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -73,11 +81,11 @@ public:
 			}
 
 			if ((Keyboard::isKeyPressed(Keyboard::Up))) {//если нажата клавиша вверх и мы на земле, то можем прыгать
-				fig.speed = 0.1; //увеличил высоту прыжка
+				fig.speed = 0.5; //увеличил высоту прыжка
 			}
 
 			if (Keyboard::isKeyPressed(Keyboard::Down)) {
-				fig.speed = -0.1;
+				fig.speed = -0.5;
 			}
 		}
 	}
@@ -123,21 +131,54 @@ public:
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0; }
 		//if (!onGround) { dy = dy + 0.0015*time; }//убираем и будем всегда прит€гивать к земле
-		if (life) { setPlayerCoordinateForView(fig.x, fig.y); }
 		//dy = dy + 0.0015*time;//посто€нно прит€гиваемс€ к земле
 	}
 };
 class Asteroid :public Entity {
 public:
-	Asteroid(Image &image, float X, float Y, int D, int Name) :Entity(image, X, Y, D, D, Name) {
+	bool spawned;
+	Asteroid(Image &image, float X, float Y, int D, float gr_rotation,  int Name) :Entity(image, X, Y, D, D, Name) {
+		spawned = false;
 		sprite.setTextureRect(IntRect(0, 0, 150, 150)); //<- нужно заменить константы на переменные
-		//cout << (float)D / 150 << endl;
 		sprite.setScale((float)fig.w / 150 , (float)fig.h / 150);
-		
+		sprite.setOrigin(150 / 2, 150 / 2);
+		fig.fi = gr_rotation / 180 * 3.1415;
 		//fig.dx = 0.1;
 	}
 	void update(float time) {
-		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h);
+		/*fig.dx = sin(fig.fi) * fig.speed;
+		fig.dy = -cos(fig.fi) * fig.speed;*/
+		if (life == false) {
+			//cout << "deleted" << endl;
+			return;
+		}
+		if ((spawned) &&
+			 ((fig.x - fig.w > WIDTH_MAP) ||
+				(fig.x + fig.w < 0) ||
+				(fig.y - fig.h > HEIGHT_MAP) ||
+				(fig.y + fig.h < 0)
+				)
+			)
+				life = false;
+		else {
+			if ( !(spawned) && !((fig.x - fig.w > WIDTH_MAP) ||
+				(fig.x + fig.w < 0) ||
+				(fig.y - fig.h > HEIGHT_MAP) ||
+				(fig.y + fig.h < 0)
+				)) {
+				spawned = true;
+				//cout << "spawned" << endl;
+			}
+		}
+		
+		fig.dx = fig.speedx; fig.dy = fig.speedy; fig.dfi = fig.speedfi;
+		fig.x += fig.dx * time;
+		fig.y += fig.dy * time;
+		fig.fi += fig.dfi * time;
+		fig.dx = 0; fig.dy = 0; fig.dfi = 0;
+		sprite.setPosition(fig.x + (float)fig.w / 2, fig.y + (float)fig.h / 2);
+		sprite.setRotation(fig.fi * 180 / 3.1415);
+		//sprite.setPosition(fig.x, fig.y);
 	}
 };
 
@@ -177,18 +218,6 @@ public:
 		}
 	}
 };
-
-void setPlayerCoordinateForView(float x, float y) 
-{
-	float tempX = x; float tempY = y;
-
-	//if (x < 320) tempX = 320;
-	//if (y < 240) tempY = 240;//верхнюю сторону
-	if (y > 624) tempY = 624;//нижнюю стороню.дл€ новой карты
-
-	view.setCenter(tempX, tempY);
-}
-
 class Map_value {
 public:
 	float ** value;
@@ -197,15 +226,16 @@ public:
 	int block_size;
 	void fill() {
 		int i, j;
-		for (i = 0; i < WIDTH_MAP; ++i)
-			for (j = 0; j < HEIGHT_MAP; ++j) {
-				value[i][j] += 1;
+		for (i = 0; i < map_width; ++i)
+			for (j = 0; j < map_height; ++j) {
+				if(value[i][j] == 0)
+					value[i][j] += 1;
 			}
 	}
 	void feed(int x, int y) {
 		int i, j;
 		int tx, ty;
-		cout << " old x = " << x << " y = " << y << " " << value[x][y] << endl;
+	//	cout << " x = " << x << " y = " << y << " " << value[x][y];
 		float tmpm = value[x][y];
 		for (i = 0; i <= tmpm; ++i)
 			for (j = 1; j + i <= tmpm; ++j)
@@ -240,7 +270,8 @@ public:
 			}
 		value[x][y] = tmpm + (value[x][y] - tmpm) / (4 * tmpm);
 		//value[x][y] = log2(value[x][y]);
-		cout << " x = " << x << " y = " << y << " "<<  value[x][y] << endl;
+		//cout << " x = " << x << " y = " << y << " "<<  value[x][y] << endl;
+		//cout << value[x][y] << endl;
 	}
 	Map_value(int width, int height, int Block_size, int crowd, int massiv) {
 		map_width = width;
@@ -249,6 +280,7 @@ public:
 		int i, j;
 		int tmpx, tmpy;
 		int oldx, oldy;
+		Clock clock;
 		srand(time(0));
 		oldx = rand() % (map_width - 1);
 		srand(time(0));
@@ -262,20 +294,23 @@ public:
 			for (j = 0; j < height; ++j) {
 				value[i][j] = 0;
 			}
+		//feed(3, 3);
+		//feed(3, 3);
 		for (i = 0; i < massiv; ++i) {
 			fill();
 			for (j = 0; j < crowd; ++j){
 				while ((oldx == tmpx) && (oldy == tmpy)) {
-					srand(time(0));
+					srand(time(0) + clock.getElapsedTime().asMicroseconds());
 					tmpx = rand() % (map_width - 1);
-					srand(time(0));
+					srand(time(0) + clock.getElapsedTime().asMicroseconds());
 					tmpy = rand() % (map_height - 1);
 					//cout << "\n repeated \n " << endl;
 				}
-				cout << "oldx " << oldx << "oldy " << oldy << "tmpx " << tmpx << "tmpy " << tmpy << endl;
+				//cout << "oldx " << oldx << "oldy " << oldy << "tmpx " << tmpx << "tmpy " << tmpy << endl;
 				oldx = tmpx;
 				oldy = tmpy;
-				feed(tmpx, tmpy);
+				if(value[tmpx][tmpy] != 0)
+					feed(tmpx, tmpy);
 			}
 		}
 	}
@@ -285,15 +320,20 @@ public:
 class Scene
 {
 public:
+	float passtime;
 	int map_width;
 	int map_height;
-
-	//Player *pplayer;//<-костыль
-
+	float vew_size_x;
+	float vew_size_y;
+	Texture map_texture;
+	Sprite map_sprite;
+	float asteroid_speedx;
 	list<Entity *> objects;
-	void asteroid_field_generate(Image heroImage, int crowd, int massiv) {
-		Map_value cur_map(map_width, map_height, 50, crowd, massiv);
+	void asteroid_field_generate(float X, float Y, int crowd, int massiv, int block_size, int rad_size) {
+		Map_value cur_map(map_width / block_size, map_height / block_size, block_size, crowd, massiv);
 		int i, j;
+		int tmpx, tmpy, tmpfi;
+		Clock clock;
 		Image asteroid_image;
 		asteroid_image.loadFromFile("images/Bill.jpg");
 		asteroid_image.createMaskFromColor(Color(255, 255, 255));
@@ -301,7 +341,16 @@ public:
 			for (j = 0; j < cur_map.map_height; ++j) {
 				if (cur_map.value[i][j] == 0)
 					continue;
-				Asteroid *aster = new Asteroid(asteroid_image, (float) (i * cur_map.block_size), (float)(j * cur_map.block_size), cur_map.value[i][j]  * cur_map.block_size / 2, 3);
+				srand(time(0) + clock.getElapsedTime().asMicroseconds());
+				tmpx = (float)(X + i * cur_map.block_size) + rand() % (block_size / 2);
+				srand(time(0) + clock.getElapsedTime().asMicroseconds());
+				tmpy = (float)(Y + j * cur_map.block_size) + rand() % (block_size / 2);
+				srand(time(0) + clock.getElapsedTime().asMicroseconds());
+				tmpfi = rand() % 360;
+				Asteroid *aster = new Asteroid(asteroid_image, tmpx, tmpy, cur_map.value[i][j]  * rad_size, tmpfi, 3);
+				aster->fig.speedx = asteroid_speedx;
+				//aster->fig.speedy = 0.01;
+				//aster->fig.speedfi = 0.01;
 				//cout << aster->fig.x << aster->fig.y << endl;
 				//cout << cur_map.value[i][j] * cur_map.block_size << endl;
 				objects.push_front(aster);
@@ -315,86 +364,105 @@ public:
 		objects.push_front(enemy);
 	}
 	void player_generate(float X, float Y, Image heroImage) {
-		//Image heroImage;
-		//heroImage.loadFromFile("images/BUs1.jpg");
 		Player *player1 = new Player(heroImage, X, Y, 100, 200, 1);
-		//objects.push_front(player1);//<- костыль
-		
-		//pplayer = (Player*)malloc(sizeof(Player));
-
-		
-		//cout << sizeof(*applayer) << "\n";
-		/*applayer->fig = player1.fig;
-
-		applayer->moveTimer = player1.moveTimer;//добавили переменную таймер дл€ будущих целей
-		applayer->health = player1.health;
-		//bool life, isMove, onGround;
-		applayer->texture = player1.texture;
-		applayer->sprite = player1.sprite;
-		cout << 0 << "\n";
-		applayer->name = player1.name;*/
-		//applayer->name = (char *)malloc(100);
-		//*pplayer = player1;
-		//cout << 1 << "\n";
-		//cout << applayer->fig.x << "\n";
-		//*applayer = player1;
-		//cout << 11 << "\n";
-		//cout << sizeof(*applayer) << "\n";
 		objects.push_front(player1);
 	}
 	void colisions(Figure &f1, Figure &f2) {
 	}
+	void set_vew(float x, float y) {
+		float old_vew_size_x = vew_size_x;
+		float old_vew_size_y = vew_size_y;
+		if (Keyboard::isKeyPressed(Keyboard::U)) {
+			vew_size_x = vew_size_x * 1.01;
+			vew_size_y = vew_size_y * 1.01;
+		}
+		if (Keyboard::isKeyPressed(Keyboard::H)) {
+			vew_size_x = vew_size_x * 0.99;
+			vew_size_y = vew_size_y * 0.99;
+		}
+		if (Keyboard::isKeyPressed(Keyboard::I)) {
+			vew_size_x = 640 * 2;
+			vew_size_y = 480 * 2;
+		}
+		if ((vew_size_x > max(map_width, 640 * 2)) || (vew_size_y > max(map_height, 480 * 2))){
+			vew_size_x = old_vew_size_x;
+			vew_size_y = old_vew_size_y;
+		}
+		if ((vew_size_x < 160) || (vew_size_y < 120)) {
+			vew_size_x = old_vew_size_x;
+			vew_size_y = old_vew_size_y;
+		}
+		view.setSize(vew_size_x, vew_size_y);
+		float tmpx = x; float tmpy = y;
+		if (x < vew_size_x / 2)
+			tmpx = vew_size_x / 2;
+		if (x > map_width - vew_size_x / 2)
+			tmpx = map_width - vew_size_x / 2;
+		if (y > map_height - vew_size_y / 2)
+			tmpy = map_height - vew_size_y / 2;
+		if (y < vew_size_y / 2)
+			tmpy = vew_size_y / 2;
+		view.setCenter(tmpx, tmpy);
+
+	}
 	void update(float time) {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
-			//pplayer->update(time);
 			if ((*it1)->name == 1) {
 				(*it1)->update(time);
-			} //нужно определить преобразние
+				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
+			}
+		}
+		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
+			if ((*it1)->name != 1) {
+				(*it1)->update(time);
+			} 
+			if (!((*it1)->life)) {
+				continue;
+			}
 			for (list<Entity*>::iterator it2 = it1; it2 != objects.end(); it2++) {
 				if (it1 == it2)
 					continue;
 				colisions((*it1)->fig, (*it2)->fig);
 			}
-				
 		}
 	}
-	void draw(RenderWindow *window) {
+	void draw(RenderWindow &window){
+		window.draw(map_sprite);
 		for (list<Entity*>::iterator it = objects.begin(); it != objects.end(); it++) {
-			window->draw((*it)->sprite);
+			window.draw((*it)->sprite);
+		}
+	}
+	void Refresh(float time) {
+		passtime += time;
+		if (map_width < asteroid_speedx * passtime) {
+			//cout << "refresh" << endl;
+			asteroid_field_generate(-map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
+			passtime = 0;
 		}
 	}
 	void RandomGenerate(Image heroImage) {
-		asteroid_field_generate(heroImage, 10, 1);
-
-		//Map_value cur_map(map_width, map_height, 100, 0, 1);
-		//int i, j;
-		//Asteroid *aster1;
-		//asteroid_image.loadFromFile("images/Bus1.jpg");//("images/Bill.jpg");
-		//asteroid_image.createMaskFromColor(Color(0, 0, 0));
-		/*for (i = 2; i < 2; ++i)
-			for (j = 1; j < 2; ++j) {
-				if (cur_map.value[i][j] == 0)
-					continue;
-				 aster1 = new Asteroid(heroImage asteroid_image, 100, 100, cur_map.value[i][j]  * cur_map.block_size, 3);
-				//cout << aster->fig.x << aster->fig.y << endl;
-				//cout << cur_map.value[i][j] * cur_map.block_size << endl;
-				objects.push_front(aster1);
-			}*/
-
+		asteroid_field_generate(0, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
+		asteroid_field_generate( -map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
 		enemy_generate(150, 150);
-		//Enemy * enemy = new Enemy(heroImage, 150, 150, 100, 200, 2);
-		//objects.push_front(enemy);
-
-		//Asteroid * aster = new Asteroid(heroImage, 150, 150, 100, 3);
-		//objects.push_front(aster);
-		//Enemy * enemy = new Enemy(heroImage, 50, 50, 100, 200, 2);
-		//objects.push_front(enemy);
 		player_generate(150, 150, heroImage);
-		
 	}
 	Scene(int Map_width, int Map_height) {
 		map_width = Map_width;
 		map_height = Map_height;
+		passtime = 0;
+		vew_size_x = 640;
+		vew_size_y = 480;
+		asteroid_speedx = 0.3;//0.01;
+		Image map_image;
+		map_image.loadFromFile("images/legends_space.png");
+		map_texture.loadFromImage(map_image);
+		map_sprite.setTexture(map_texture);
+		map_sprite.setTextureRect(IntRect(0, 0, 4096, 2304));
+		float mapx = map_texture.getSize().x; //4096 ;
+		float mapy = map_texture.getSize().y; //2304;
+		map_sprite.setScale((float)map_width / mapx, (float)map_height / mapy);
+		map_sprite.setOrigin(mapx / 2, mapy / 2);
+		map_sprite.setPosition(map_width / 2, map_height / 2);
 	}
 };
 
@@ -403,21 +471,14 @@ int main()
 {
 	RenderWindow window(VideoMode(640, 480), "gamelike");
 	Scene level1(WIDTH_MAP, HEIGHT_MAP);
-	
-	
-
 	Image heroImage;
 	heroImage.loadFromFile("images/BUs1.jpg");
 	level1.RandomGenerate(heroImage);
-	//level1.player_generate(200, 200, heroImage);
-
 	view.reset(FloatRect(0, 0, 640, 480));
 	Clock clock;
 	while (window.isOpen())
 	{
-
 		float time = clock.getElapsedTime().asMicroseconds();
-
 		clock.restart();
 		time = time / 800;
 
@@ -428,50 +489,16 @@ int main()
 				window.close();
 		}	
 		window.setView(view);
-		//level1.update(time);
 		window.clear();
-
-
-		/*for (int i = 0; i < HEIGHT_MAP; i++)
-			for (int j = 0; j < WIDTH_MAP; j++)
-			{
-				if (TileMap[i][j] == ' ')  s_map.setTextureRect(IntRect(0, 0, 32, 32));
-				if (TileMap[i][j] == 's')  s_map.setTextureRect(IntRect(32, 0, 32, 32));
-				if ((TileMap[i][j] == '0')) s_map.setTextureRect(IntRect(64, 0, 32, 32));
-				if ((TileMap[i][j] == 'f')) s_map.setTextureRect(IntRect(96, 0, 32, 32));
-				if ((TileMap[i][j] == 'h')) s_map.setTextureRect(IntRect(128, 0, 32, 32));
-				s_map.setPosition(j * 32, i * 32);
-
-				window.draw(s_map);
-			}
-		window.draw(easyEnemy.sprite);
-		window.draw(p.sprite);*/
-		//level1.draw(&window);//<- здес€ видимо создаЄтс€ бесконечное кол-во окон
-		/*for (list<Entity>::iterator it = level1.objects.begin(); 
-			it != level1.objects.end(); 
-			it++) {
-			window.draw(it->sprite);
-		}*/
-		//player1.update(time);
-		//window.draw(player1.sprite);
-		/*
-		(*level1.objects.begin())->update(time);
-		window.draw((*level1.objects.begin())->sprite);
-		*/
-		//cout << level1.pplayer->fig.x;
-
-		//(*level1.objects.begin())->update(time);
-		//level1.update(time);
-		for (list<Entity*>::iterator it = level1.objects.begin();
+		/*for (list<Entity*>::iterator it = level1.objects.begin();
 			it != level1.objects.end();
 			it++) {
 			(*it)->update(time);
 			window.draw((*it)->sprite);
-		}
-
-
-		//player1.update(time);
-		//window.draw(player1.sprite);//<- здес€ скорее всего всЄ крашитс€ нафиг
+		}*/
+		level1.Refresh(time);
+		level1.update(time);
+		level1.draw(window);
 		window.display();
 	}
 	return 0;
