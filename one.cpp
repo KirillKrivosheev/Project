@@ -273,6 +273,12 @@ public:
 		//cout << " x = " << x << " y = " << y << " "<<  value[x][y] << endl;
 		//cout << value[x][y] << endl;
 	}
+	void distruct() {
+		int i;
+		for (i = 0; i < map_width; ++i)
+			free(value[i]);
+		free(value);
+	}
 	Map_value(int width, int height, int Block_size, int crowd, int massiv) {
 		map_width = width;
 		map_height = height;
@@ -355,6 +361,7 @@ public:
 				//cout << cur_map.value[i][j] * cur_map.block_size << endl;
 				objects.push_front(aster);
 			}
+		cur_map.distruct();
 	}
 	void enemy_generate(float X, float Y) {
 		Image EnemyImage;
@@ -412,18 +419,21 @@ public:
 				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
 			}
 		}
-		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
+		//list<Entity*>::iterator oldit1 = objects.begin();
+		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
 			if ((*it1)->name != 1) {
 				(*it1)->update(time);
 			} 
 			if (!((*it1)->life)) {
+				it1 = objects.erase(it1);
 				continue;
 			}
-			for (list<Entity*>::iterator it2 = it1; it2 != objects.end(); it2++) {
+			for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
 				if (it1 == it2)
 					continue;
 				colisions((*it1)->fig, (*it2)->fig);
 			}
+			it1++;
 		}
 	}
 	void draw(RenderWindow &window){
@@ -445,6 +455,11 @@ public:
 		asteroid_field_generate( -map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
 		enemy_generate(150, 150);
 		player_generate(150, 150, heroImage);
+	}
+	void distruct() {
+		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
+			delete *it1;
+		}
 	}
 	Scene(int Map_width, int Map_height) {
 		map_width = Map_width;
@@ -501,5 +516,8 @@ int main()
 		level1.draw(window);
 		window.display();
 	}
+	level1.distruct();
+//	int k;
+//	cin >> k;
 	return 0;
 }
