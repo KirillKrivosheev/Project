@@ -48,14 +48,14 @@ public:
 	Texture texture;
 	Sprite sprite;
 	int name;
-
-	virtual void update(float time) = 0;
+	virtual void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) = 0;
+	virtual void draw(RenderWindow &window) {
+		window.draw(sprite);
+	}
 	Entity(Image &image, float X, float Y, int W, int H, int Name) {
 		fig.x = X; fig.y = Y; fig.w = W; fig.h = H; name = Name; moveTimer = 0;
 		fig.speed = 0; health = 100; fig.dx = 0; fig.dy = 0; fig.fi = 0; fig.dfi = 0;
-
 		fig.velocity.x = 0; fig.velocity.y = 0; fig.acceleration.x = 0; fig.acceleration.y = 0;
-
 		life = true; isMove = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -64,28 +64,92 @@ public:
 	}
 };
 
+class Bullet :public Entity {
+public:
+	Bullet(Image &image, float X, float Y, float speed, float fi, int Name) : Entity(image, X, Y, 30, 30, Name) {
+		fig.speed = speed;
+		fig.fi = fi;
+		sprite.setTextureRect(IntRect(0, 0, 7, 7));
+		sprite.setScale(30 / 7, 30 / 7);
+	}
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+		fig.x += fig.speed * sin(fig.fi);
+		fig.y += - fig.speed * cos(fig.fi);
+		sprite.setPosition(fig.x, fig.y);
+	}
+};
+
+class Item :public Entity {
+public:
+	Figure * holder;
+	float subx;
+	float suby;
+	float passtime;
+	Bullet * bullets;
+	Image bullet_image;
+	void control(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+		Vector2i pixelPos = Mouse::getPosition(window);
+		Vector2f pos = window.mapPixelToCoords(pixelPos);
+		fig.fi = (atan2(pos.y - (fig.y) , pos.x - (fig.x))) + 3.1415 / 2;
+		sprite.setRotation(fig.fi);
+		if (passtime < 0)
+			passtime = 0;
+		else
+			passtime -= time;
+		if (event.type == Event::MouseButtonPressed)
+			if (event.key.code == Mouse::Left)
+				if (passtime == 0) {
+					bullets = new Bullet(bullet_image, fig.x + fig.w / 2 + sin(fig.fi) * 75, fig.y + fig.h / 2 - cos(fig.fi) * 75, 30, fig.fi, 5);
+					pobjects->push_back(bullets);
+					passtime = 1000;
+				}
+	}
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+		fig.x = holder->x + subx;
+		fig.y = holder->y + suby;
+		control(time, window, event, pobjects);
+		sprite.setRotation(fig.fi * 180 / 3.1415);
+		sprite.setPosition(fig.x, fig.y);
+	}
+	Item(Image &image, float subX, float subY, int W, int H, Figure* substrat, int Name) :Entity(image, substrat->x + subX, substrat->y + subY, W, H, Name) {
+		if (name == 4) {
+			passtime = 0;
+			holder = substrat;
+			subx = subX;
+			suby = subY;
+			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
+			sprite.setOrigin(fig.w / 2, fig.h * 2 / 3);
+			bullet_image.loadFromFile("images/Bullet.png");
+			bullet_image.createMaskFromColor(Color(255, 255, 255));
+		}
+	}
+};
 
 class Player :public Entity {
 public:
-	enum { left, right, up, down, jump, stay } state;
 	int playerScore;
-
+	Item* items;
 	Player(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
-		playerScore = 0; state = stay;
+		playerScore = 0; 
 		if (name == 1) {
 			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
+			Image item_image;
+			item_image.loadFromFile("images/Gun.png");
+			item_image.createMaskFromColor(Color(255, 255, 255));
+			items = new Item(item_image, fig.w / 2, fig.h / 2, 32, 100, &fig, 4);
 		}
 	}
-
-	//operator = 
-
+	void draw(RenderWindow &window) {
+		window.draw(sprite);
+		window.draw(items->sprite);
+	}
 	void control() {
 		if (Keyboard::isKeyPressed) {
 			if (Keyboard::isKeyPressed(Keyboard::Left)) {
-				state = left; fig.dfi = -0.005;
+				fig.dfi = -0.005;
 			}
 			if (Keyboard::isKeyPressed(Keyboard::Right)) {
-				state = right; fig.dfi = 0.005;
+				fig.dfi = 0.005;
 			}
 
 			if ((Keyboard::isKeyPressed(Keyboard::Up))) {
@@ -259,7 +323,7 @@ public:
 		return;
 	}
 
-	void update(float time)
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects)
 	{
 		///////////////////////////////////////////////////////////////
 		//control();
@@ -302,6 +366,8 @@ public:
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0.98*fig.speed; }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		items->update(time, window, event, pobjects);
 	}
 };
 
@@ -316,7 +382,7 @@ public:
 		fig.fi = gr_rotation / 180 * 3.1415;
 		//fig.dx = 0.1;
 	}
-	void update(float time) {
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
 		/*fig.dx = sin(fig.fi) * fig.speed;
 		fig.dy = -cos(fig.fi) * fig.speed;*/
 		if (life == false) {
@@ -341,8 +407,6 @@ public:
 				//cout << "spawned" << endl;
 			}
 		}
-
-
 		fig.velocity.x = sin(fig.fi) * fig.speed;
 		fig.velocity.y = -cos(fig.fi) * fig.speed;
 		fig.velocity.x += fig.acceleration.x * time;
@@ -359,7 +423,6 @@ public:
 		//}
 		fig.dx = (fig.velocity.x);
 		fig.dy = (fig.velocity.y);
-		//checkCollisionWithMap(fig.dx, fig.dy);
 		fig.velocity.x = fig.dx;
 		fig.velocity.y = fig.dy;
 		if (fig.velocity.y < 0)
@@ -396,6 +459,7 @@ public:
 	}
 };
 
+
 class Enemy :public Entity {
 public:
 	Enemy(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
@@ -404,23 +468,7 @@ public:
 			fig.dx = 0.1;
 		}
 	}
-
-	/*void checkCollisionWithMap(float Dx, float Dy)
-	{
-	for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)
-	for (int j = fig.x / 32; j<(fig.x + fig.w) / 32; j++)
-	{
-	if (TileMap[i][j] == '0')
-	{
-	if (Dy>0) { fig.y = i * 32 - fig.h; }
-	if (Dy<0) { fig.y = i * 32 + 32; }
-	if (Dx>0) { fig.x = j * 32 - fig.w; fig.dx = -0.1; sprite.scale(-1, 1); }
-	if (Dx<0) { fig.x = j * 32 + 32; fig.dx = 0.1; sprite.scale(-1, 1); }
-	}
-	}
-	}*/
-
-	void update(float time)
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects)
 	{
 		if (name == 2) {
 
@@ -514,8 +562,6 @@ public:
 			for (j = 0; j < height; ++j) {
 				value[i][j] = 0;
 			}
-		//feed(3, 3);
-		//feed(3, 3);
 		for (i = 0; i < massiv; ++i) {
 			fill();
 			for (j = 0; j < crowd; ++j) {
@@ -629,8 +675,6 @@ public:
 			tmpy = vew_size_y / 2;
 		view.setCenter(tmpx, tmpy);
 	}
-
-
 	/*void update(float time) {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
@@ -679,7 +723,7 @@ public:
 			it1++;
 		}
 	}*/
-	void update(float time) {
+	void update(float time, RenderWindow &window, Event event) {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
@@ -691,15 +735,14 @@ public:
 					    ((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
 					}
 				}
-
-				(*it1)->update(time);
+				(*it1)->update(time, window, event, &objects);
 				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
 			}
 		}
 		//list<Entity*>::iterator oldit1 = objects.begin();
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
 			if ((*it1)->name != 1) {
-				(*it1)->update(time);
+				(*it1)->update(time, window, event, &objects);
 			}
 			if (!((*it1)->life)) {
 				it1 = objects.erase(it1);
@@ -713,11 +756,10 @@ public:
 			it1++;
 		}
 	}
-
 	void draw(RenderWindow &window) {
 		window.draw(map_sprite);
 		for (list<Entity*>::iterator it = objects.begin(); it != objects.end(); it++) {
-			window.draw((*it)->sprite);
+			(*it)->draw(window);// window.draw((*it)->sprite);
 		}
 	}
 	void Refresh(float time) {
@@ -731,7 +773,7 @@ public:
 	void RandomGenerate(Image heroImage) {
 		asteroid_field_generate(0, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
 		asteroid_field_generate(-map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
-		enemy_generate(150, 150);
+		//enemy_generate(150, 150);
 		player_generate(150, 150, heroImage);
 	}
 	void distruct() {
@@ -790,7 +832,7 @@ int main()
 		window.draw((*it)->sprite);
 		}*/
 		level1.Refresh(time);
-		level1.update(time);
+		level1.update(time, window, event);
 		level1.draw(window);
 		window.display();
 	}
