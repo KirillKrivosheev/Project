@@ -64,6 +64,8 @@ public:
 	}
 };
 
+
+
 class Bullet :public Entity {
 public:
 	Bullet(Image &image, float X, float Y, float speed, float fi, int Name) : Entity(image, X, Y, 30, 30, Name) {
@@ -76,6 +78,12 @@ public:
 		fig.x += fig.speed * sin(fig.fi);
 		fig.y += - fig.speed * cos(fig.fi);
 		sprite.setPosition(fig.x, fig.y);
+		if ((fig.x - fig.w > WIDTH_MAP) ||
+			(fig.x + fig.w < 0) ||
+			(fig.y - fig.h > HEIGHT_MAP) ||
+			(fig.y + fig.h < 0)
+			)
+			life = false;
 	}
 };
 
@@ -480,6 +488,42 @@ public:
 	}
 };
 
+class Drop :public Entity {
+public:
+	float minrad;
+	float alfa;
+	float rotate;
+	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 100, 50, 6) {
+		minrad = 160000;
+		alfa = 0.1;
+		rotate = 0.5;
+	}
+	void collect(Player * target) {
+		Figure tfig = target->fig;
+		float distx = tfig.x - fig.x - fig.w / 2 * sin(fig.fi);
+		float disty = tfig.y - fig.y + fig.h / 2 * cos(fig.fi);
+		float dist = distx * distx + disty * disty;
+		if (dist < minrad) {
+			if (0) {
+				life = false;
+				target->playerScore += 10;
+				cout << target->playerScore << endl;
+			}
+			//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
+			//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
+			fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
+			fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+		}
+	}
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+		fig.dfi = rotate;
+		fig.fi += fig.dfi;
+		fig.dfi = 0;
+		sprite.setRotation(fig.fi);
+		sprite.setPosition(fig.x, fig.y);
+	}
+};
+
 class Map_value {
 public:
 	float ** value;
@@ -594,6 +638,7 @@ public:
 	Texture map_texture;
 	Sprite map_sprite;
 	float asteroid_speedx;
+	//Player * pl;
 	list<Entity *> objects;
 	void asteroid_field_generate(float X, float Y, int crowd, int massiv, int block_size, int rad_size) {
 		Map_value cur_map(map_width / block_size, map_height / block_size, block_size, crowd, massiv);
@@ -637,6 +682,7 @@ public:
 	void player_generate(float X, float Y, Image heroImage) {
 		Player *player1 = new Player(heroImage, X, Y, 100, 200, 1);
 		objects.push_front(player1);
+		//pl = player1;
 	}
 	void colisions(Figure &f1, Figure &f2) {
 	}
@@ -727,7 +773,6 @@ public:
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
-
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++)
 				{
 					if ((*it2)->name == 3)
@@ -738,7 +783,18 @@ public:
 				(*it1)->update(time, window, event, &objects);
 				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
 			}
+				/*(*it1)->update(time, window, event, &objects);
+				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);*/
+			if ((*it1)->name == 6) {
+				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++){
+					if ((*it2)->name == 1){
+						((Drop*)(*it1))->collect((Player *)(*it2));
+						//cout << 1 << endl;
+					}
+				}
+			}
 		}
+		
 		//list<Entity*>::iterator oldit1 = objects.begin();
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
 			if ((*it1)->name != 1) {
@@ -775,6 +831,11 @@ public:
 		asteroid_field_generate(-map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
 		//enemy_generate(150, 150);
 		player_generate(150, 150, heroImage);
+		Image drop_image;
+		drop_image.loadFromFile("images/Drop.png");
+		drop_image.createMaskFromColor(Color(255, 255, 255));
+		Drop * dr = new Drop(drop_image, 500, 500);
+		objects.push_back(dr);
 	}
 	void distruct() {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
