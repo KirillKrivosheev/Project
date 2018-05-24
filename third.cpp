@@ -177,7 +177,7 @@ public:
 	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 150, 150, 6) {
 		//minrad = 16000;
 		//	alfa = 0.1;
-		rotate = 0.2;
+		rotate = 0.05;
 		isInTag = false;
 	}
 	/*void collect(Player * target) {
@@ -225,8 +225,9 @@ public:
 		//{
 
 		//}
-		
-		sprite.setRotation(fig.fi);
+		else
+				cout << fig.fi << endl;
+		sprite.setRotation(180*fig.fi/3.1415);
 		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
 	}
 };
@@ -576,15 +577,61 @@ public:
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0.98*fig.speed; }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		Vector attachPoint;
+		Vector fromNext;
+		Figure* Current;
+		float removal;
+		Vector e;
+		attachPoint.x = -0.5*(fig.h)*(sin(fig.fi)) + fig.x + 0.5*fig.w;
+		attachPoint.y = 0.5*(fig.h)*(1 + cos(fig.fi)) + fig.y;
 		for (std::vector<Drop*>::iterator it = Tag.begin(); it != Tag.end(); ++it)
 		{
-			(&((*it)->fig))->fi = fig.fi;
+			///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//      	(&((*it)->fig))->fi = fig.fi;
 			/*////////////////////////////////////////////////////////////////////////
 			fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
 			fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
 			/*///////////////////////////////////////////////////////////////////////
-			(&((*it)->fig))->x = -(0.5)*(1 + sin((&((*it)->fig))->fi))*(&((*it)->fig))->w - 0.5*(fig.h)*(sin(fig.fi)) + fig.x + 0.5*fig.w;
-			(&((*it)->fig))->y = -(0.5)*(1 - cos((&((*it)->fig))->fi))*(&((*it)->fig))->h + 0.5*(fig.h)*(1 + cos(fig.fi)) + fig.y;
+//	        (&((*it)->fig))->x = -(0.5)*(1 + sin((&((*it)->fig))->fi))*(&((*it)->fig))->w - 0.5*(fig.h)*(sin(fig.fi)) + fig.x + 0.5*fig.w;
+//          (&((*it)->fig))->y = -(0.5)*(1 - cos((&((*it)->fig))->fi))*(&((*it)->fig))->h + 0.5*(fig.h)*(1 + cos(fig.fi)) + fig.y;
+			//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+			Current = &((*it)->fig);
+			if ((attachPoint.x - Current->x - 0.5*Current->w)*(attachPoint.x - Current->x - 0.5*Current->w) + (attachPoint.y - Current->y - 0.5*Current->h)*(attachPoint.y - Current->y - 0.5*Current->h) < (0.5*Current->w)*(0.5*Current->w))
+			{
+				attachPoint.x = Current->x + 0.5*Current->w - 0.5*(Current->w)*sin(Current->fi);
+				attachPoint.y = Current->y + 0.5*Current->h + 0.5*(Current->h)*cos(Current->fi);
+				continue;
+			}
+			//if attach point inside the next circle ---> continue only to get new attach point 
+			Current->x = Current->x - 0.5*(Current->w)*sin(Current->fi);
+			Current->y = Current->y + 0.5*(Current->h)*cos(Current->fi);
+			fromNext.x = attachPoint.x - Current->x - 0.5*Current->w;
+			fromNext.y = attachPoint.y - Current->y - 0.5*Current->h;
+			
+			if (fromNext.y < 0)
+			{
+				Current->fi = atan(-fromNext.x / (fromNext.y));
+			}
+			if (fromNext.y > 0)
+			{
+				Current->fi = acos(-1) + atan(-fromNext.x / (fromNext.y));
+			}
+			if ((fromNext.y == 0) && (fromNext.x > 0))
+			{
+				Current->fi = acos(0);
+			}
+			if ((fromNext.y == 0) && (fromNext.x < 0))
+			{
+				Current->fi = -acos(0);
+			}
+			//cout << Current->fi << endl;
+			e.x = sin(Current->fi);
+			e.y = -cos(Current->fi);
+			removal = Scalar_product(e, fromNext);
+			Current->x += (removal - 0.5*fig.w)*sin(Current->fi);
+			Current->y -= (removal - 0.5*fig.w)*cos(Current->fi);
+			attachPoint.x = Current->x + 0.5*Current->w - 0.5*(Current->w)*sin(Current->fi);
+			attachPoint.y = Current->y + 0.5*Current->h + 0.5*(Current->h)*cos(Current->fi);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		items->update(time, window, event, pobjects);
@@ -1096,7 +1143,11 @@ public:
 		drop_image.loadFromFile("images/Bill2.jpg");
 		drop_image.createMaskFromColor(Color(255, 255, 255));
 		Drop * dr = new Drop(drop_image, 500, 500);
+		Drop * dr2 = new Drop(drop_image, 1500, 1500);
+		Drop * dr3 = new Drop(drop_image, 2500, 1500);
 		objects.push_back(dr);
+		objects.push_back(dr2);
+		objects.push_back(dr3);
 	}
 	void distruct() {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
