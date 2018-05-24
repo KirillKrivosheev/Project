@@ -143,7 +143,7 @@ bool checkIntersection(Figure fig, Figure Enemy)
 	return true;
 }
 
-bool checkCollisionWithFriend(Figure fig, Figure Friend)
+bool checkCollisionWithFriendForBullet(Figure fig, Figure Friend)
 {
 	Vector r;
 	r.x = Friend.x + 0.5*Friend.w - fig.x - 0.5*fig.w;
@@ -151,6 +151,21 @@ bool checkCollisionWithFriend(Figure fig, Figure Friend)
 
 	///////////////////////////////////////////////////
 	if (sqrt((r.x)*(r.x) + (r.y)*(r.y)) > 0.5*30*fig.h/7 + 0.5*Friend.h)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool checkCollisionWithFriend(Figure fig, Figure Friend)
+{
+	Vector r;
+	r.x = Friend.x + 0.5*Friend.w - fig.x - 0.5*fig.w;
+	r.y = Friend.y + 0.5*Friend.h - fig.y - 0.5*fig.h;
+
+	///////////////////////////////////////////////////
+	if (sqrt((r.x)*(r.x) + (r.y)*(r.y)) > 0.5 * fig.h + 0.5*Friend.h)
 	{
 		return false;
 	}
@@ -1074,9 +1089,9 @@ public:
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 5) {
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
-					if ((*it2)->name == 3 || (*it2)->name == 6)
+					if ((*it2)->name == 3)
 					{
-						if (checkCollisionWithFriend((*it1)->fig, (*it2)->fig))
+						if (checkCollisionWithFriendForBullet((*it1)->fig, (*it2)->fig))
 						{
 							(*it2)->life = false;
 							(*it1)->life = false;
@@ -1085,6 +1100,8 @@ public:
 				}
 			}
 		}
+		bool flag = false;
+		int i = 0;
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
@@ -1100,6 +1117,27 @@ public:
 					if ((*it2)->name == 3)
 					{
 						((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
+						for (std::vector<Drop*>::iterator it = ((Player*)(*it1))->Tag.begin(); it != ((Player*)(*it1))->Tag.end(); ++it)
+						{
+							if(checkCollisionWithFriend((*it2)->fig, (*it)->fig))
+							{
+								flag = true;
+							}
+							if (flag == true)
+							{
+								(*it)->life = false;
+								i = i + 1;
+							}
+						}
+						flag = false;
+						if (i > 0)
+						{
+							for (int j = 0; j < i; j++)
+							{
+								((Player*)(*it1))->Tag.pop_back();
+							}
+						}
+						i = 0;
 					}
 				}
 				if ((*it1)->fig.acceleration.x > 0.25)
