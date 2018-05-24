@@ -143,6 +143,21 @@ bool checkIntersection(Figure fig, Figure Enemy)
 	return true;
 }
 
+bool checkCollisionWithFriend(Figure fig, Figure Friend)
+{
+	Vector r;
+	r.x = Friend.x + 0.5*Friend.w - fig.x - 0.5*fig.w;
+	r.y = Friend.y + 0.5*Friend.h - fig.y - 0.5*fig.h;
+
+	///////////////////////////////////////////////////
+	if (sqrt((r.x)*(r.x) + (r.y)*(r.y)) > 0.5*30*fig.h/7 + 0.5*Friend.h)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 class Entity {
 public:
 	Figure fig;
@@ -225,8 +240,8 @@ public:
 		//{
 
 		//}
-		else
-				cout << fig.fi << endl;
+		//else
+				//cout << fig.fi << endl;
 		sprite.setRotation(180*fig.fi/3.1415);
 		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
 	}
@@ -234,22 +249,25 @@ public:
 
 class Bullet :public Entity {
 public:
-	Bullet(Image &image, float X, float Y, float speed, float fi, int Name) : Entity(image, X, Y, 30, 30, Name) {
+	Bullet(Image &image, float X, float Y, float speed, float fi, int Name) : Entity(image, X, Y, 7, 7, Name) {
 		fig.speed = speed;
 		fig.fi = fi;
 		sprite.setTextureRect(IntRect(0, 0, 7, 7));
-		sprite.setScale(30 / 7, 30 / 7);
+	    sprite.setScale(30 / 7, 30 / 7);
 	}
 	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		fig.x += fig.speed * sin(fig.fi);
-		fig.y += -fig.speed * cos(fig.fi);
-		sprite.setPosition(fig.x, fig.y);
-		if ((fig.x - fig.w > WIDTH_MAP) ||
-			(fig.x + fig.w < 0) ||
-			(fig.y - fig.h > HEIGHT_MAP) ||
-			(fig.y + fig.h < 0)
-			)
-			life = false;
+		if (fig.x + 0.5*fig.w> 0)
+		{
+			fig.x += fig.speed * sin(fig.fi)* time;
+			fig.y += -fig.speed * cos(fig.fi) *time;
+			sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
+			if ((fig.x - fig.w > WIDTH_MAP) ||
+				(fig.x + fig.w < 0) ||
+				(fig.y - fig.h > HEIGHT_MAP) ||
+				(fig.y + fig.h < 0)
+				)
+				life = false;
+		}
 	}
 };
 
@@ -273,7 +291,7 @@ public:
 		if (event.type == Event::MouseButtonPressed)
 			if (event.key.code == Mouse::Left)
 				if (passtime == 0) {
-					bullets = new Bullet(bullet_image, fig.x + fig.w / 2 + sin(fig.fi) * 75, fig.y + fig.h / 2 - cos(fig.fi) * 75, 30, fig.fi, 5);
+					bullets = new Bullet(bullet_image, fig.x + fig.w / 2 + sin(fig.fi) * 75, fig.y + fig.h / 2 - cos(fig.fi) * 75, 3, fig.fi, 5);
 					pobjects->push_back(bullets);
 					passtime = 1000;
 				}
@@ -708,7 +726,7 @@ public:
 		{
 			fig.fi = -acos(0);
 		}
-		sprite.setRotation(fig.fi * 180 / 3.1415);//ïîâîðà÷èâàåì ñïðàéò íà ýòè ãðàäóñû
+		sprite.setRotation(fig.fi * 180 / 3.1415);
 		fig.x += fig.dx*time;
 		fig.y += fig.dy*time;
 		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2);
@@ -1054,6 +1072,20 @@ public:
 	}*/
 	void update(float time, RenderWindow &window, Event event) {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
+			if ((*it1)->name == 5) {
+				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
+					if ((*it2)->name == 3 || (*it2)->name == 6)
+					{
+						if (checkCollisionWithFriend((*it1)->fig, (*it2)->fig))
+						{
+							(*it2)->life = false;
+							(*it1)->life = false;
+						}
+					}
+				}
+			}
+		}
+		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) 
@@ -1145,9 +1177,19 @@ public:
 		Drop * dr = new Drop(drop_image, 500, 500);
 		Drop * dr2 = new Drop(drop_image, 1500, 1500);
 		Drop * dr3 = new Drop(drop_image, 2500, 1500);
+		Drop * dr4 = new Drop(drop_image, 2500, 1500);
+		Drop * dr5 = new Drop(drop_image, 2500, 1500);
+		Drop *dr6[10];
+		for (int i = 0; i < 10; ++i)
+		{
+			dr6[i] = new Drop(drop_image, 2500, 1500);
+			objects.push_back(dr6[i]);
+		}
 		objects.push_back(dr);
 		objects.push_back(dr2);
 		objects.push_back(dr3);
+		objects.push_back(dr4);
+		objects.push_back(dr5);
 	}
 	void distruct() {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
