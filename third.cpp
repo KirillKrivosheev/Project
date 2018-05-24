@@ -7,6 +7,7 @@
 #include <cmath>
 #include <list>
 #include <ctime>
+#include <vector>
 
 using namespace sf;
 using namespace std;
@@ -39,6 +40,109 @@ public:
 	int h;
 }typedef Figure;
 
+bool checkIntersection(Figure fig, Figure Enemy)
+{
+	//CircleShape shape2(5, 100);
+	//shape2.setFillColor(sf::Color::Green);
+	Vector e1;
+	e1.x = sin(fig.fi);
+	e1.y = -cos(fig.fi);
+	Vector e2;
+	e2.x = -cos(fig.fi);
+	e2.y = -sin(fig.fi);
+	Vector r;
+	r.x = Enemy.x + 0.5*Enemy.w - fig.x - 0.5*fig.w;
+	r.y = Enemy.y + 0.5*Enemy.h - fig.y - 0.5*fig.h;
+
+	//cout << Enemy.h << endl << Enemy.y << endl;
+	///////////////////////////////////////////////////
+	if (sqrt((r.x)*(r.x) + (r.y)*(r.y)) > sqrt((0.5*fig.h)*(0.5*fig.h) + (0.5*fig.w)*(0.5*fig.w)) + 0.5*Enemy.h)
+	{
+		//shape2.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
+		//shape2.setRadius(0);
+		//return shape2;
+		return false;
+	}
+	////////////////////////////////////////////////////////////////
+	Vector closest;
+	closest.x = 0;
+	closest.y = 0;
+	Vector projection;
+	Vector normal;
+	float penetration;
+	if (Scalar_product(e1, r) >= 0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w || Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) >= 0.5*fig.w)
+	{
+		closest.x = fig.x + 0.5*(fig.h)*e1.x + 0.5*(fig.w)*e2.x + 0.5*fig.w;
+		closest.y = fig.y + 0.5*(fig.h)*e1.y + 0.5*(fig.w)*e2.y + 0.5*fig.h;
+	}
+
+	if ((Scalar_product(e1, r) >= 0.5*fig.h && Scalar_product(e2, r) < -0.5*fig.w) || (Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) <= -0.5*fig.w))
+	{
+		closest.x = fig.x + 0.5*(fig.h)*e1.x - 0.5*(fig.w)*e2.x + 0.5*fig.w;
+		closest.y = fig.y + 0.5*(fig.h)*e1.y - 0.5*(fig.w)*e2.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) <= -0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w || Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) >= 0.5*fig.w)
+	{
+		closest.x = fig.x - 0.5*(fig.h)*e1.x + 0.5*(fig.w)*e2.x + 0.5*fig.w;
+		closest.y = fig.y - 0.5*(fig.h)*e1.y + 0.5*(fig.w)*e2.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) <= -0.5*fig.h && Scalar_product(e2, r) < -0.5*fig.w || Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) <= -0.5*fig.w)
+	{
+		closest.x = fig.x - 0.5*(fig.h)*e1.x - 0.5*(fig.w)*e2.x + 0.5*fig.w;
+		closest.y = fig.y - 0.5*(fig.h)*e1.y - 0.5*(fig.w)*e2.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) > 0.5*fig.h && Scalar_product(e2, r) < 0.5*fig.w && Scalar_product(e2, r) > -0.5*fig.w)
+	{
+		projection.x = (e2.x)*Scalar_product(e2, r);
+		projection.y = (e2.y)*Scalar_product(e2, r);
+		closest.x = fig.x + 0.5*(fig.h)*e1.x + projection.x + 0.5*fig.w;
+		closest.y = fig.y + 0.5*(fig.h)*e1.y + projection.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) < -0.5*fig.h && Scalar_product(e2, r) < 0.5*fig.w && Scalar_product(e2, r) > -0.5*fig.w)
+	{
+		projection.x = (e2.x)*Scalar_product(e2, r);
+		projection.y = (e2.y)*Scalar_product(e2, r);
+		closest.x = fig.x - 0.5*(fig.h)*e1.x + projection.x + 0.5*fig.w;
+		closest.y = fig.y - 0.5*(fig.h)*e1.y + projection.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) < 0.5*fig.h && Scalar_product(e1, r) > -0.5*fig.h && Scalar_product(e2, r) > 0.5*fig.w)
+	{
+		projection.x = (e1.x)*Scalar_product(e1, r);
+		projection.y = (e1.y)*Scalar_product(e1, r);
+		closest.x = fig.x + 0.5*(fig.w)*e2.x + projection.x + 0.5*fig.w;
+		closest.y = fig.y + 0.5*(fig.w)*e2.y + projection.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) < 0.5*fig.h && Scalar_product(e1, r) > -0.5*fig.h && Scalar_product(e2, r) < -0.5*fig.w)
+	{
+		projection.x = (e1.x)*Scalar_product(e1, r);
+		projection.y = (e1.y)*Scalar_product(e1, r);
+		closest.x = fig.x - 0.5*(fig.w)*e2.x + projection.x + 0.5*fig.w;
+		closest.y = fig.y - 0.5*(fig.w)*e2.y + projection.y + 0.5*fig.h;
+	}
+
+	if (Scalar_product(e1, r) <= 0.5*fig.h && Scalar_product(e1, r) >= -0.5*fig.h && Scalar_product(e2, r) <= 0.5*fig.w && Scalar_product(e2, r) >= -0.5*fig.w)
+	{
+		closest.x = Enemy.x + 0.5*Enemy.w;
+		closest.y = Enemy.y + 0.5*Enemy.h;
+	}
+
+	//shape2.setPosition(closest.x, closest.y);
+
+	if ((0.5*Enemy.h)*(0.5*Enemy.h) < (Enemy.x + 0.5*Enemy.w - closest.x)*(Enemy.x + 0.5*Enemy.w - closest.x) + (Enemy.y + 0.5*Enemy.h - closest.y)*(Enemy.y + 0.5*Enemy.h - closest.y))
+	{
+		//return shape2;
+		return false;
+	}
+
+	return true;
+}
+
 class Entity {
 public:
 	Figure fig;
@@ -64,7 +168,68 @@ public:
 	}
 };
 
+class Drop :public Entity {
+public:
+	//float minrad;
+	//float alfa;
+	float rotate;
+	bool isInTag;
+	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 150, 150, 6) {
+		//minrad = 16000;
+		//	alfa = 0.1;
+		rotate = 0.2;
+		isInTag = false;
+	}
+	/*void collect(Player * target) {
+		Figure tfig = target->fig;
+		///////////////////////////////////////////////////////////////////////////
+		float distx = tfig.x - fig.x - fig.w / 2 * sin(fig.fi);
+		float disty = tfig.y - fig.y + fig.h / 2 * cos(fig.fi);
+		float dist = distx * distx + disty * disty;
+		if (dist < minrad) {
+		////////////////////////////////////////////////////////////////////////////
+		if (checkIntersection(tfig, fig)) {
+			if (0) {
+				life = false;
+				target->playerScore += 10;
+				cout << target->playerScore << endl;
+			}
+			if (isInTag == false)
+			{
 
+				//isInTag = true;//here I should add this thing to the list <<Tag>> in class Player
+				//////////////////////////////////////////////////(target->Tag).push_back();
+
+				//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
+				//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
+				//	cout << "I am here" << endl;
+				rotate = 0;
+				fig.fi = tfig.fi;
+				/////////////////////////////////////////////////////////////////////////
+				fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
+				fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+				////////////////////////////////////////////////////////////////////////
+				fig.x = -(0.5)*(1 + sin(fig.fi))*fig.w - 0.5*(tfig.h)*(sin(tfig.fi)) + tfig.x + 0.5*tfig.w;
+				fig.y = -(0.5)*(1 - cos(fig.fi))*fig.h + 0.5*(tfig.h)*(1 + cos(tfig.fi)) + tfig.y;
+			}
+			//////////////////////////////////////////////////////////////////////////////
+		}
+	}*/
+	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+		if (isInTag == false) {
+		    fig.dfi += rotate;
+		    fig.fi += fig.dfi;
+		    fig.dfi = 0;
+		}
+		//else
+		//{
+
+		//}
+		
+		sprite.setRotation(fig.fi);
+		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
+	}
+};
 
 class Bullet :public Entity {
 public:
@@ -137,6 +302,7 @@ class Player :public Entity {
 public:
 	int playerScore;
 	Item* items;
+	vector<Drop*> Tag;
 	Player(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
 		playerScore = 0;
 		if (name == 1) {
@@ -184,6 +350,42 @@ public:
 	}
 	}
 	*/
+	void collect(Drop * target) 
+	{
+		Figure* tfig = &(target->fig);
+		/*//////////////////////////////////////////////////////////////////////////
+		float distx = tfig.x - fig.x - fig.w / 2 * sin(fig.fi);
+		float disty = tfig.y - fig.y + fig.h / 2 * cos(fig.fi);
+		float dist = distx * distx + disty * disty;
+		if (dist < minrad) {
+		/*///////////////////////////////////////////////////////////////////////////
+		if (checkIntersection(fig, *tfig)) {
+		//	if (0) {
+			//	life = false;
+				//playerScore += 10;
+				//cout << target->playerScore << endl;
+			//}
+			if (target->isInTag == false)
+			{
+
+				target->isInTag = true;//here I should add this thing to the list <<Tag>> in class Player
+			    Tag.push_back(target);
+
+				//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
+				//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
+				//	cout << "I am here" << endl;
+				target->rotate = 0;
+		//		tfig->fi = fig.fi;
+				/*////////////////////////////////////////////////////////////////////////
+				fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
+				fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+				/*///////////////////////////////////////////////////////////////////////
+		//		tfig->x = -(0.5)*(1 + sin(tfig->fi))*tfig->w - 0.5*(fig.h)*(sin(fig.fi)) + fig.x + 0.5*fig.w;
+		//   	tfig->y = -(0.5)*(1 - cos(tfig->fi))*tfig->h + 0.5*(fig.h)*(1 + cos(fig.fi)) + fig.y;
+			}
+			//////////////////////////////////////////////////////////////////////////////
+		}
+	}
 
 	void checkCollisionWithEnemy(Figure Enemy)
 	{
@@ -364,17 +566,27 @@ public:
 		fig.dx = (fig.velocity.x);
 		fig.dy = (fig.velocity.y);
 		fig.fi += fig.dfi * time;
-		sprite.setRotation(fig.fi * 180 / 3.1415);//ïîâîðà÷èâàåì ñïðàéò íà ýòè ãðàäóñû
+		sprite.setRotation(fig.fi * 180 / 3.1415);//
 		fig.dfi = 0;
 		fig.x += fig.dx*time;
-		//checkCollisionWithMap(fig.dx, 0);//îáðàáàòûâàåì ñòîëêíîâåíèå ïî 
+		//checkCollisionWithMap(fig.dx, 0);//
 		fig.y += fig.dy*time;
-		//checkCollisionWithMap(0, fig.dy);//îáðàáàòûâàåì ñòîëêíîâåíèå ïî Y
-		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h); //çàäàåì ïîçèöèþ ñïðàéòà â ìåñòî åãî öåíòðà
+		//checkCollisionWithMap(0, fig.dy);//
+		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h); //
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0.98*fig.speed; }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+		for (std::vector<Drop*>::iterator it = Tag.begin(); it != Tag.end(); ++it)
+		{
+			(&((*it)->fig))->fi = fig.fi;
+			/*////////////////////////////////////////////////////////////////////////
+			fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
+			fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+			/*///////////////////////////////////////////////////////////////////////
+			(&((*it)->fig))->x = -(0.5)*(1 + sin((&((*it)->fig))->fi))*(&((*it)->fig))->w - 0.5*(fig.h)*(sin(fig.fi)) + fig.x + 0.5*fig.w;
+			(&((*it)->fig))->y = -(0.5)*(1 - cos((&((*it)->fig))->fi))*(&((*it)->fig))->h + 0.5*(fig.h)*(1 + cos(fig.fi)) + fig.y;
+		}
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		items->update(time, window, event, pobjects);
 	}
 };
@@ -488,41 +700,67 @@ public:
 	}
 };
 
-class Drop :public Entity {
+/*class Drop :public Entity {
 public:
-	float minrad;
-	float alfa;
+	//float minrad;
+	//float alfa;
 	float rotate;
-	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 100, 50, 6) {
-		minrad = 160000;
-		alfa = 0.1;
-		rotate = 0.5;
+	bool isInTag;
+	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 150, 150, 6) {
+		//minrad = 16000;
+	//	alfa = 0.1;
+		rotate = 0.2;
+	    isInTag = false;
 	}
 	void collect(Player * target) {
 		Figure tfig = target->fig;
+		///////////////////////////////////////////////////////////////////////////
 		float distx = tfig.x - fig.x - fig.w / 2 * sin(fig.fi);
 		float disty = tfig.y - fig.y + fig.h / 2 * cos(fig.fi);
 		float dist = distx * distx + disty * disty;
 		if (dist < minrad) {
+		////////////////////////////////////////////////////////////////////////////
+		if(checkIntersection(tfig, fig)){
 			if (0) {
 				life = false;
 				target->playerScore += 10;
 				cout << target->playerScore << endl;
 			}
-			//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
-			//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
-			fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
-			fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+			if (isInTag == false)
+			{
+
+			    //isInTag = true;//here I should add this thing to the list <<Tag>> in class Player
+				//////////////////////////////////////////////////(target->Tag).push_back();
+
+				//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
+				//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
+			//	cout << "I am here" << endl;
+				rotate = 0;
+				fig.fi = tfig.fi;
+				////////////////////////////////////////////////////////////////////////
+				fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
+				fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
+				///////////////////////////////////////////////////////////////////////
+				fig.x = -(0.5)*(1 + sin(fig.fi))*fig.w - 0.5*(tfig.h)*(sin(tfig.fi)) + tfig.x + 0.5*tfig.w;
+				fig.y = -(0.5)*(1 - cos(fig.fi))*fig.h + 0.5*(tfig.h)*(1 + cos(tfig.fi)) + tfig.y;
+			}
+			//////////////////////////////////////////////////////////////////////////////
 		}
 	}
 	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		fig.dfi = rotate;
-		fig.fi += fig.dfi;
-		fig.dfi = 0;
+		//if (isInTag == false) {
+			fig.dfi += rotate;
+			fig.fi += fig.dfi;
+			fig.dfi = 0;
+	//	}
+		//else
+		//{
+
+		//}
 		sprite.setRotation(fig.fi);
-		sprite.setPosition(fig.x, fig.y);
+		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h);
 	}
-};
+};*/
 
 class Map_value {
 public:
@@ -771,6 +1009,13 @@ public:
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
+				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) 
+				{
+					if ((*it2)->name == 6) 
+					{
+						((Player*)(*it1))->collect((Drop *)(*it2));
+					}
+				}
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++)
 				{
 					if ((*it2)->name == 3)
@@ -778,11 +1023,28 @@ public:
 						((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
 					}
 				}
+				if ((*it1)->fig.acceleration.x > 0.25)
+				{
+					(*it1)->fig.acceleration.x = 0.25;
+				}
+				if ((*it1)->fig.acceleration.x < -0.25)
+				{
+					(*it1)->fig.acceleration.x = -0.25;
+				}
+				if ((*it1)->fig.acceleration.y < -0.25)
+				{
+					(*it1)->fig.acceleration.y = -0.25;
+				}
+				if ((*it1)->fig.acceleration.y > 0.25)
+				{
+					(*it1)->fig.acceleration.y = 0.25;
+				}
 				(*it1)->update(time, window, event, &objects);
 				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
 			}
 			/*(*it1)->update(time, window, event, &objects);
 			set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);*/
+			/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 			if ((*it1)->name == 6) {
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
 					if ((*it2)->name == 1) {
@@ -791,6 +1053,7 @@ public:
 					}
 				}
 			}
+			/*//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		}
 
 		//list<Entity*>::iterator oldit1 = objects.begin();
@@ -830,7 +1093,7 @@ public:
 		//enemy_generate(150, 150);
 		player_generate(150, 150, heroImage);
 		Image drop_image;
-		drop_image.loadFromFile("images/Drop.png");
+		drop_image.loadFromFile("images/Bill2.jpg");
 		drop_image.createMaskFromColor(Color(255, 255, 255));
 		Drop * dr = new Drop(drop_image, 500, 500);
 		objects.push_back(dr);
