@@ -48,14 +48,14 @@ public:
 	Texture texture;
 	Sprite sprite;
 	int name;
-	virtual void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) = 0;
-	virtual void draw(RenderWindow &window) {
-		window.draw(sprite);
-	}
+
+	virtual void update(float time) = 0;
 	Entity(Image &image, float X, float Y, int W, int H, int Name) {
 		fig.x = X; fig.y = Y; fig.w = W; fig.h = H; name = Name; moveTimer = 0;
 		fig.speed = 0; health = 100; fig.dx = 0; fig.dy = 0; fig.fi = 0; fig.dfi = 0;
+
 		fig.velocity.x = 0; fig.velocity.y = 0; fig.acceleration.x = 0; fig.acceleration.y = 0;
+
 		life = true; isMove = false;
 		texture.loadFromImage(image);
 		sprite.setTexture(texture);
@@ -65,108 +65,36 @@ public:
 };
 
 
-
-class Bullet :public Entity {
-public:
-	Bullet(Image &image, float X, float Y, float speed, float fi, int Name) : Entity(image, X, Y, 30, 30, Name) {
-		fig.speed = speed;
-		fig.fi = fi;
-		sprite.setTextureRect(IntRect(0, 0, 7, 7));
-		sprite.setScale(30 / 7, 30 / 7);
-	}
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		fig.x += fig.speed * sin(fig.fi);
-		fig.y += - fig.speed * cos(fig.fi);
-		sprite.setPosition(fig.x, fig.y);
-		if ((fig.x - fig.w > WIDTH_MAP) ||
-			(fig.x + fig.w < 0) ||
-			(fig.y - fig.h > HEIGHT_MAP) ||
-			(fig.y + fig.h < 0)
-			)
-			life = false;
-	}
-};
-
-class Item :public Entity {
-public:
-	Figure * holder;
-	float subx;
-	float suby;
-	float passtime;
-	Bullet * bullets;
-	Image bullet_image;
-	void control(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		Vector2i pixelPos = Mouse::getPosition(window);
-		Vector2f pos = window.mapPixelToCoords(pixelPos);
-		fig.fi = (atan2(pos.y - (fig.y) , pos.x - (fig.x))) + 3.1415 / 2;
-		sprite.setRotation(fig.fi);
-		if (passtime < 0)
-			passtime = 0;
-		else
-			passtime -= time;
-		if (event.type == Event::MouseButtonPressed)
-			if (event.key.code == Mouse::Left)
-				if (passtime == 0) {
-					bullets = new Bullet(bullet_image, fig.x + fig.w / 2 + sin(fig.fi) * 75, fig.y + fig.h / 2 - cos(fig.fi) * 75, 30, fig.fi, 5);
-					pobjects->push_back(bullets);
-					passtime = 1000;
-				}
-	}
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		fig.x = holder->x + subx;
-		fig.y = holder->y + suby;
-		control(time, window, event, pobjects);
-		sprite.setRotation(fig.fi * 180 / 3.1415);
-		sprite.setPosition(fig.x, fig.y);
-	}
-	Item(Image &image, float subX, float subY, int W, int H, Figure* substrat, int Name) :Entity(image, substrat->x + subX, substrat->y + subY, W, H, Name) {
-		if (name == 4) {
-			passtime = 0;
-			holder = substrat;
-			subx = subX;
-			suby = subY;
-			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
-			sprite.setOrigin(fig.w / 2, fig.h * 2 / 3);
-			bullet_image.loadFromFile("images/Bullet.png");
-			bullet_image.createMaskFromColor(Color(255, 255, 255));
-		}
-	}
-};
-
 class Player :public Entity {
 public:
+	enum { left, right, up, down, jump, stay } state;
 	int playerScore;
-	Item* items;
+
 	Player(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
-		playerScore = 0; 
+		playerScore = 0; state = stay;
 		if (name == 1) {
 			sprite.setTextureRect(IntRect(0, 0, fig.w, fig.h));
-			Image item_image;
-			item_image.loadFromFile("images/Gun.png");
-			item_image.createMaskFromColor(Color(255, 255, 255));
-			items = new Item(item_image, fig.w / 2, fig.h / 2, 32, 100, &fig, 4);
 		}
 	}
-	void draw(RenderWindow &window) {
-		window.draw(sprite);
-		window.draw(items->sprite);
-	}
+
+	//operator = 
+
 	void control() {
 		if (Keyboard::isKeyPressed) {
 			if (Keyboard::isKeyPressed(Keyboard::Left)) {
-				fig.dfi = -0.005;
+				state = left; fig.dfi = -0.005;
 			}
 			if (Keyboard::isKeyPressed(Keyboard::Right)) {
-				fig.dfi = 0.005;
+				state = right; fig.dfi = 0.005;
 			}
 
 			if ((Keyboard::isKeyPressed(Keyboard::Up))) {
 				fig.speed = 0.5;
 			}
 
-		//	if (Keyboard::isKeyPressed(Keyboard::Down)) {
-	//			fig.speed = -0.5;
-//			}
+			//	if (Keyboard::isKeyPressed(Keyboard::Down)) {
+			//			fig.speed = -0.5;
+			//			}
 		}
 	}
 
@@ -285,7 +213,7 @@ public:
 		}
 
 		normal.x = Enemy.x + 0.5*Enemy.w - closest.x;
-		normal.y = Enemy.y + 0.5*Enemy.h - closest.y;//к центру круга
+		normal.y = Enemy.y + 0.5*Enemy.h - closest.y;//? ?????? ?????
 		penetration = (0.5*Enemy.h) - sqrt((Enemy.x + 0.5*Enemy.w - closest.x)*(Enemy.x + 0.5*Enemy.w - closest.x) + (Enemy.y + 0.5*Enemy.h - closest.y)*(Enemy.y + 0.5*Enemy.h - closest.y));
 
 		if (Scalar_product(e1, r) <= 0.5*fig.h && Scalar_product(e1, r) >= -0.5*fig.h && Scalar_product(e2, r) <= 0.5*fig.w && Scalar_product(e2, r) >= -0.5*fig.w)
@@ -317,21 +245,21 @@ public:
 		fig.acceleration.y += power*normal.y;
 		/*if (fig.acceleration.x > 0.25)
 		{
-			fig.acceleration.x = 0.25;
+		fig.acceleration.x = 0.25;
 		}
 		if (fig.acceleration.x < -0.25)
 		{
-			fig.acceleration.x = -0.25;
+		fig.acceleration.x = -0.25;
 		}
 		if (fig.acceleration.y < -0.25)
 		{
-			fig.acceleration.y = -0.25;
+		fig.acceleration.y = -0.25;
 		}*/
 		//return shape2;
 		return;
 	}
 
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects)
+	void update(float time)
 	{
 		///////////////////////////////////////////////////////////////
 		//control();
@@ -345,7 +273,7 @@ public:
 		case stay: break;
 		}*/
 
-	//////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////
 		fig.velocity.x = sin(fig.fi) * fig.speed;
 		fig.velocity.y = -cos(fig.fi) * fig.speed;
 		//shape3 = checkCollisionWithEnemy(enemy);
@@ -364,18 +292,16 @@ public:
 		fig.dx = (fig.velocity.x);
 		fig.dy = (fig.velocity.y);
 		fig.fi += fig.dfi * time;
-		sprite.setRotation(fig.fi * 180 / 3.1415);//поворачиваем спрайт на эти градусы
+		sprite.setRotation(fig.fi * 180 / 3.1415);//???????????? ?????? ?? ??? ???????
 		fig.dfi = 0;
 		fig.x += fig.dx*time;
-		//checkCollisionWithMap(fig.dx, 0);//обрабатываем столкновение по 
+		//checkCollisionWithMap(fig.dx, 0);//???????????? ???????????? ?? 
 		fig.y += fig.dy*time;
-		//checkCollisionWithMap(0, fig.dy);//обрабатываем столкновение по Y
-		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h); //задаем позицию спрайта в место его центра
+		//checkCollisionWithMap(0, fig.dy);//???????????? ???????????? ?? Y
+		sprite.setPosition(fig.x + 0.5*fig.w, fig.y + 0.5*fig.h); //?????? ??????? ??????? ? ????? ??? ??????
 		if (health <= 0) { life = false; }
 		if (!isMove) { fig.speed = 0.98*fig.speed; }
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-		items->update(time, window, event, pobjects);
 	}
 };
 
@@ -390,7 +316,7 @@ public:
 		fig.fi = gr_rotation / 180 * 3.1415;
 		//fig.dx = 0.1;
 	}
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
+	void update(float time) {
 		/*fig.dx = sin(fig.fi) * fig.speed;
 		fig.dy = -cos(fig.fi) * fig.speed;*/
 		if (life == false) {
@@ -415,6 +341,8 @@ public:
 				//cout << "spawned" << endl;
 			}
 		}
+
+
 		fig.velocity.x = sin(fig.fi) * fig.speed;
 		fig.velocity.y = -cos(fig.fi) * fig.speed;
 		fig.velocity.x += fig.acceleration.x * time;
@@ -431,6 +359,7 @@ public:
 		//}
 		fig.dx = (fig.velocity.x);
 		fig.dy = (fig.velocity.y);
+		//checkCollisionWithMap(fig.dx, fig.dy);
 		fig.velocity.x = fig.dx;
 		fig.velocity.y = fig.dy;
 		if (fig.velocity.y < 0)
@@ -449,13 +378,13 @@ public:
 		{
 			fig.fi = -acos(0);
 		}
-		sprite.setRotation(fig.fi * 180 / 3.1415);//поворачиваем спрайт на эти градусы
+		sprite.setRotation(fig.fi * 180 / 3.1415);//???????????? ?????? ?? ??? ???????
 		fig.x += fig.dx*time;
 		fig.y += fig.dy*time;
 		sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2);
 
 		/*//////////////////////////////////////////////////////////////////////////////////////
-		fig.dx = fig.velocity.x; fig.dy = fig.velocity.y; 
+		fig.dx = fig.velocity.x; fig.dy = fig.velocity.y;
 		fig.x += fig.dx * time;
 		fig.y += fig.dy * time;
 		fig.fi += fig.dfi * time;
@@ -467,7 +396,6 @@ public:
 	}
 };
 
-
 class Enemy :public Entity {
 public:
 	Enemy(Image &image, float X, float Y, int W, int H, int Name) :Entity(image, X, Y, W, H, Name) {
@@ -476,7 +404,23 @@ public:
 			fig.dx = 0.1;
 		}
 	}
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects)
+
+	/*void checkCollisionWithMap(float Dx, float Dy)
+	{
+	for (int i = fig.y / 32; i < (fig.y + fig.h) / 32; i++)
+	for (int j = fig.x / 32; j<(fig.x + fig.w) / 32; j++)
+	{
+	if (TileMap[i][j] == '0')
+	{
+	if (Dy>0) { fig.y = i * 32 - fig.h; }
+	if (Dy<0) { fig.y = i * 32 + 32; }
+	if (Dx>0) { fig.x = j * 32 - fig.w; fig.dx = -0.1; sprite.scale(-1, 1); }
+	if (Dx<0) { fig.x = j * 32 + 32; fig.dx = 0.1; sprite.scale(-1, 1); }
+	}
+	}
+	}*/
+
+	void update(float time)
 	{
 		if (name == 2) {
 
@@ -485,42 +429,6 @@ public:
 			sprite.setPosition(fig.x + fig.w / 2, fig.y + fig.h / 2);
 			if (health <= 0) { life = false; }
 		}
-	}
-};
-
-class Drop :public Entity {
-public:
-	float minrad;
-	float alfa;
-	float rotate;
-	Drop(Image &image, float X, float Y) : Entity(image, X, Y, 100, 50, 6) {
-		minrad = 160000;
-		alfa = 0.1;
-		rotate = 0.5;
-	}
-	void collect(Player * target) {
-		Figure tfig = target->fig;
-		float distx = tfig.x - fig.x - fig.w / 2 * sin(fig.fi);
-		float disty = tfig.y - fig.y + fig.h / 2 * cos(fig.fi);
-		float dist = distx * distx + disty * disty;
-		if (dist < minrad) {
-			if (0) {
-				life = false;
-				target->playerScore += 10;
-				cout << target->playerScore << endl;
-			}
-			//fig.dx += alfa * (tfig.x - fig.x);// + (1 - alfa) * fig.x;
-			//fig.dy += alfa * (tfig.y - fig.y);// +(1 - alfa) * fig.y;
-			fig.x = tfig.x + fig.w / 2 * sin(fig.fi);// fig.dx;
-			fig.y = tfig.y - fig.h / 2 * cos(fig.fi);//fig.dy;
-		}
-	}
-	void update(float time, RenderWindow &window, Event event, list<Entity *> * pobjects) {
-		fig.dfi = rotate;
-		fig.fi += fig.dfi;
-		fig.dfi = 0;
-		sprite.setRotation(fig.fi);
-		sprite.setPosition(fig.x, fig.y);
 	}
 };
 
@@ -606,6 +514,8 @@ public:
 			for (j = 0; j < height; ++j) {
 				value[i][j] = 0;
 			}
+		//feed(3, 3);
+		//feed(3, 3);
 		for (i = 0; i < massiv; ++i) {
 			fill();
 			for (j = 0; j < crowd; ++j) {
@@ -638,7 +548,6 @@ public:
 	Texture map_texture;
 	Sprite map_sprite;
 	float asteroid_speedx;
-	//Player * pl;
 	list<Entity *> objects;
 	void asteroid_field_generate(float X, float Y, int crowd, int massiv, int block_size, int rad_size) {
 		Map_value cur_map(map_width / block_size, map_height / block_size, block_size, crowd, massiv);
@@ -657,7 +566,7 @@ public:
 				srand(time(0) + clock.getElapsedTime().asMicroseconds());
 				tmpy = (float)(Y + j * cur_map.block_size) + rand() % (block_size / 2);
 				srand(time(0) + clock.getElapsedTime().asMicroseconds());
-				//tmpfi = rand() % 360;
+				//tmpfi = 90 + rand() % 10;
 				tmpfi = 90;
 				Asteroid *aster = new Asteroid(asteroid_image, tmpx, tmpy, cur_map.value[i][j] * rad_size, tmpfi, 3);
 				aster->fig.speed = asteroid_speedx;
@@ -682,7 +591,6 @@ public:
 	void player_generate(float X, float Y, Image heroImage) {
 		Player *player1 = new Player(heroImage, X, Y, 100, 200, 1);
 		objects.push_front(player1);
-		//pl = player1;
 	}
 	void colisions(Figure &f1, Figure &f2) {
 	}
@@ -721,84 +629,93 @@ public:
 			tmpy = vew_size_y / 2;
 		view.setCenter(tmpx, tmpy);
 	}
+
+
 	/*void update(float time) {
-		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
-			if ((*it1)->name == 1) {
-				/////////////////////////////////////////////////////////////////
-			//	(*it1)->update(time);
-				//////////////////////////////////////////////////////////////////
-				//((Player*)(*it1))->control();
-				(*it1)->update(time);
-				/////////////////////////////////////////////////////////////////////////////////////////
-			//	for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++)
-				//{
-					//if ((*it2)->name == 3)
-					//{
-						//((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
-					//}
-				//}
-				/////////////////////////////////////////////////////////////////////////////////////
-		     	set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
-			}
+	for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
+	if ((*it1)->name == 1) {
+	/////////////////////////////////////////////////////////////////
+	//	(*it1)->update(time);
+	//////////////////////////////////////////////////////////////////
+	//((Player*)(*it1))->control();
+	(*it1)->update(time);
+	/////////////////////////////////////////////////////////////////////////////////////////
+	//	for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++)
+	//{
+	//if ((*it2)->name == 3)
+	//{
+	//((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
+	//}
+	//}
+	/////////////////////////////////////////////////////////////////////////////////////
+	set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
+	}
 
-			if ((*it1)->name = 3) /// and they must be different here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			{
+	if ((*it1)->name = 3) /// and they must be different here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	{
 
-			}
-		}
-		//list<Entity*>::iterator oldit1 = objects.begin();
-		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
-			if ((*it1)->name != 1) {
-				(*it1)->update(time);
-			}
-			////////////////////////////////////////////////////////
-			if ((*it1)->name == 1)
-			{
-				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
-			}
-			//////////////////////////////////////////////////////////
-			if (!((*it1)->life)) {
-				it1 = objects.erase(it1);
-				continue;
-			}
-			for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
-				if (it1 == it2)
-					continue;
-				colisions((*it1)->fig, (*it2)->fig);
-			}
-			it1++;
-		}
+	}
+	}
+	//list<Entity*>::iterator oldit1 = objects.begin();
+	for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
+	if ((*it1)->name != 1) {
+	(*it1)->update(time);
+	}
+	////////////////////////////////////////////////////////
+	if ((*it1)->name == 1)
+	{
+	set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
+	}
+	//////////////////////////////////////////////////////////
+	if (!((*it1)->life)) {
+	it1 = objects.erase(it1);
+	continue;
+	}
+	for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++) {
+	if (it1 == it2)
+	continue;
+	colisions((*it1)->fig, (*it2)->fig);
+	}
+	it1++;
+	}
 	}*/
-	void update(float time, RenderWindow &window, Event event) {
+	void update(float time) {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
 			if ((*it1)->name == 1) {
 				((Player*)(*it1))->control();
+
 				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++)
 				{
 					if ((*it2)->name == 3)
 					{
-					    ((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
+						((Player*)(*it1))->checkCollisionWithEnemy((*it2)->fig);
 					}
 				}
-				(*it1)->update(time, window, event, &objects);
+				if ((*it1)->fig.acceleration.x > 0.25)
+				{
+					(*it1)->fig.acceleration.x = 0.25;
+				}
+				if ((*it1)->fig.acceleration.x < -0.25)
+				{
+					(*it1)->fig.acceleration.x = -0.25;
+				}
+				if ((*it1)->fig.acceleration.y < -0.25)
+				{
+					(*it1)->fig.acceleration.y = -0.25;
+				}
+				if ((*it1)->fig.acceleration.y > 0.25)
+				{
+					(*it1)->fig.acceleration.y = 0.25;
+				}
+
+				(*it1)->update(time);
 				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);
 			}
-				/*(*it1)->update(time, window, event, &objects);
-				set_vew((*it1)->fig.x + (*it1)->fig.w / 2, (*it1)->fig.y + (*it1)->fig.h / 2);*/
-			if ((*it1)->name == 6) {
-				for (list<Entity*>::iterator it2 = objects.begin(); it2 != objects.end(); it2++){
-					if ((*it2)->name == 1){
-						((Drop*)(*it1))->collect((Player *)(*it2));
-						//cout << 1 << endl;
-					}
-				}
-			}
 		}
-		
 		//list<Entity*>::iterator oldit1 = objects.begin();
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); ) {
 			if ((*it1)->name != 1) {
-				(*it1)->update(time, window, event, &objects);
+				(*it1)->update(time);
 			}
 			if (!((*it1)->life)) {
 				it1 = objects.erase(it1);
@@ -812,10 +729,11 @@ public:
 			it1++;
 		}
 	}
+
 	void draw(RenderWindow &window) {
 		window.draw(map_sprite);
 		for (list<Entity*>::iterator it = objects.begin(); it != objects.end(); it++) {
-			(*it)->draw(window);// window.draw((*it)->sprite);
+			window.draw((*it)->sprite);
 		}
 	}
 	void Refresh(float time) {
@@ -829,13 +747,8 @@ public:
 	void RandomGenerate(Image heroImage) {
 		asteroid_field_generate(0, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
 		asteroid_field_generate(-map_width, 0, 100, 5, BLOCK_SIZE, RAD_SIZE);
-		//enemy_generate(150, 150);
+		enemy_generate(150, 150);
 		player_generate(150, 150, heroImage);
-		Image drop_image;
-		drop_image.loadFromFile("images/Drop.png");
-		drop_image.createMaskFromColor(Color(255, 255, 255));
-		Drop * dr = new Drop(drop_image, 500, 500);
-		objects.push_back(dr);
 	}
 	void distruct() {
 		for (list<Entity*>::iterator it1 = objects.begin(); it1 != objects.end(); it1++) {
@@ -893,7 +806,7 @@ int main()
 		window.draw((*it)->sprite);
 		}*/
 		level1.Refresh(time);
-		level1.update(time, window, event);
+		level1.update(time);
 		level1.draw(window);
 		window.display();
 	}
